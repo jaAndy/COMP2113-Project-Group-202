@@ -1,0 +1,9 @@
+# Compiled executable
+comp2113_game
+
+# macOS system files
+.DS_Store
+
+# Object files
+*.o
+*.out
