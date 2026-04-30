@@ -1,13 +1,17 @@
 #include "player.h"
 
+#include <algorithm>
+
 // What it does: Creates a player with five empty pet slots.
 // What the inputs are: None.
 // What the outputs are: Initializes health, gold, and empty team slots.
-Player::Player() {
+Player::Player()
+{
     hp = 5;
     gold = 10;
 
-    for (int i = 0; i < 5; i++) {
+    for (int i = 0; i < 5; i++)
+    {
         team[i] = nullptr;
     }
 }
@@ -15,38 +19,44 @@ Player::Player() {
 // What it does: Destroys the player and deletes all owned pets.
 // What the inputs are: None.
 // What the outputs are: Frees all pet pointers owned by the player.
-Player::~Player() {
+Player::~Player()
+{
     clearTeam();
 }
 
 // What it does: Gets the player's current health points.
 // What the inputs are: None.
 // What the outputs are: Returns the current health points.
-int Player::getHp() const {
+int Player::getHp() const
+{
     return hp;
 }
 
 // What it does: Adds gold to the player.
 // What the inputs are: The amount of gold to add.
 // What the outputs are: Updates the player's gold.
-void Player::addGold(int amount) {
+void Player::addGold(int amount)
+{
     gold = gold + amount;
 }
 
 // What it does: Resets the player gold to the normal shop phase amount.
 // What the inputs are: None.
 // What the outputs are: Sets the player's gold to ten.
-void Player::resetGold() {
+void Player::resetGold()
+{
     gold = 10;
 }
 
 // What it does: Removes health points from the player.
 // What the inputs are: The amount of health points to remove.
 // What the outputs are: Updates player health without going below zero.
-void Player::loseHp(int amount) {
+void Player::loseHp(int amount)
+{
     hp = hp - amount;
 
-    if (hp < 0) {
+    if (hp < 0)
+    {
         hp = 0;
     }
 }
@@ -54,15 +64,18 @@ void Player::loseHp(int amount) {
 // What it does: Gets the player's current gold.
 // What the inputs are: None.
 // What the outputs are: Returns the current gold amount.
-int Player::getGold() const {
+int Player::getGold() const
+{
     return gold;
 }
 
 // What it does: Gets a pet pointer from a team slot.
 // What the inputs are: The slot index to read.
 // What the outputs are: Returns the pet pointer or nullptr if the slot is invalid.
-Pet* Player::getTeamPet(int slotIndex) const {
-    if (slotIndex < 0 || slotIndex >= 5) {
+Pet *Player::getTeamPet(int slotIndex) const
+{
+    if (slotIndex < 0 || slotIndex >= 5)
+    {
         return nullptr;
     }
 
@@ -72,15 +85,18 @@ Pet* Player::getTeamPet(int slotIndex) const {
 // What it does: Gets the raw team array for skill functions.
 // What the inputs are: None.
 // What the outputs are: Returns the team pointer array without changing ownership.
-Pet** Player::getTeamArray() {
+Pet **Player::getTeamArray()
+{
     return team;
 }
 
 // What it does: Spends gold from the player if enough gold exists.
 // What the inputs are: The amount of gold to spend.
 // What the outputs are: Returns true if gold was spent, otherwise false.
-bool Player::spendGold(int amount) {
-    if (amount < 0 || gold < amount) {
+bool Player::spendGold(int amount)
+{
+    if (amount < 0 || gold < amount)
+    {
         return false;
     }
 
@@ -91,29 +107,35 @@ bool Player::spendGold(int amount) {
 // What it does: Buys or merges a shop pet into a chosen team slot.
 // What the inputs are: The shop pet pointer and the target slot index.
 // What the outputs are: Returns true if the buy or merge succeeds, otherwise false.
-bool Player::buyPet(Pet* shopPet, int targetSlot) {
-    if (shopPet == nullptr || targetSlot < 0 || targetSlot >= 5) {
+bool Player::buyPet(Pet *shopPet, int targetSlot)
+{
+    if (shopPet == nullptr || targetSlot < 0 || targetSlot >= 5)
+    {
         return false;
     }
 
-    if (gold < 3) {
+    if (gold < 3)
+    {
         return false;
     }
 
-    if (team[targetSlot] == nullptr) {
+    if (team[targetSlot] == nullptr)
+    {
         gold = gold - 3;
         team[targetSlot] = shopPet;
         return true;
     }
 
-    if (team[targetSlot]->getName() == shopPet->getName()) {
+    if (team[targetSlot]->getName() == shopPet->getName())
+    {
         int oldLevel = team[targetSlot]->getLevel();
 
         gold = gold - 3;
         team[targetSlot]->addExperience(1);
         team[targetSlot]->buffStats(1, 1);
 
-        if (team[targetSlot]->getLevel() > oldLevel) {
+        if (team[targetSlot]->getLevel() > oldLevel)
+        {
             team[targetSlot]->buffStats(1, 1);
         }
 
@@ -127,24 +149,113 @@ bool Player::buyPet(Pet* shopPet, int targetSlot) {
 // What it does: Sells a pet from a team slot.
 // What the inputs are: The slot index to sell from.
 // What the outputs are: Adds gold from the pet level, deletes the pet, and clears the slot.
-void Player::sellPet(int slotIndex) {
-    if (slotIndex < 0 || slotIndex >= 5) {
+void Player::sellPet(int slotIndex)
+{
+    if (slotIndex < 0 || slotIndex >= 5)
+    {
         return;
     }
 
-    if (team[slotIndex] != nullptr) {
+    if (team[slotIndex] != nullptr)
+    {
         gold = gold + team[slotIndex]->getLevel();
         delete team[slotIndex];
         team[slotIndex] = nullptr;
     }
 }
 
+// What it does: Moves or swaps pets between two team slots.
+// What the inputs are: The source slot index and the destination slot index.
+// What the outputs are: Returns true if the move or swap succeeds, otherwise false.
+bool Player::movePet(int fromSlot, int toSlot)
+{
+    if (fromSlot < 0 || fromSlot >= 5 || toSlot < 0 || toSlot >= 5)
+    {
+        return false;
+    }
+
+    if (fromSlot == toSlot)
+    {
+        return true;
+    }
+
+    if (team[fromSlot] == nullptr)
+    {
+        return false;
+    }
+
+    Pet *tempPet = team[fromSlot];
+    team[fromSlot] = team[toSlot];
+    team[toSlot] = tempPet;
+    return true;
+}
+
+// What it does: Combines one pet into another slot if they are the same type.
+// What the inputs are: The source slot index and the destination slot index.
+// What the outputs are: Returns true if combine succeeds, otherwise false.
+bool Player::combinePets(int fromSlot, int toSlot)
+{
+    Pet *sourcePet = nullptr;
+    Pet *targetPet = nullptr;
+    int combinedCopies = 0;
+    int combinedAttack = 0;
+    int combinedHp = 0;
+
+    if (fromSlot < 0 || fromSlot >= 5 || toSlot < 0 || toSlot >= 5)
+    {
+        return false;
+    }
+
+    if (fromSlot == toSlot)
+    {
+        return false;
+    }
+
+    sourcePet = team[fromSlot];
+    targetPet = team[toSlot];
+
+    if (sourcePet == nullptr || targetPet == nullptr)
+    {
+        return false;
+    }
+
+    if (sourcePet->getName() != targetPet->getName())
+    {
+        return false;
+    }
+
+    if (sourcePet->getLevel() >= 3 || targetPet->getLevel() >= 3)
+    {
+        return false;
+    }
+
+    combinedCopies = sourcePet->getTotalCopies() + targetPet->getTotalCopies();
+    if (combinedCopies > 6)
+    {
+        combinedCopies = 6;
+    }
+
+    combinedAttack = std::max(sourcePet->getAttack(), targetPet->getAttack()) + 1;
+    combinedHp = std::max(sourcePet->getHp(), targetPet->getHp()) + 1;
+
+    targetPet->setFromTotalCopies(combinedCopies);
+    targetPet->setAttack(combinedAttack);
+    targetPet->setHp(combinedHp);
+
+    delete sourcePet;
+    team[fromSlot] = nullptr;
+    return true;
+}
+
 // What it does: Removes all pets from the player team.
 // What the inputs are: None.
 // What the outputs are: Deletes every pet pointer and clears all slots.
-void Player::clearTeam() {
-    for (int i = 0; i < 5; i++) {
-        if (team[i] != nullptr) {
+void Player::clearTeam()
+{
+    for (int i = 0; i < 5; i++)
+    {
+        if (team[i] != nullptr)
+        {
             delete team[i];
             team[i] = nullptr;
         }
