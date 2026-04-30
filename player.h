@@ -3,11 +3,12 @@
 
 #include "pet.h"
 
-class Player {
+class Player
+{
 private:
     int hp;
     int gold;
-    Pet* team[5];
+    Pet *team[5];
 
 public:
     Player();
@@ -15,15 +16,17 @@ public:
 
     int getHp() const;
     int getGold() const;
-    Pet* getTeamPet(int slotIndex) const;
-    Pet** getTeamArray();
+    Pet *getTeamPet(int slotIndex) const;
+    Pet **getTeamArray();
 
     void addGold(int amount);
     void resetGold();
     void loseHp(int amount);
     bool spendGold(int amount);
-    bool buyPet(Pet* shopPet, int targetSlot);
+    bool buyPet(Pet *shopPet, int targetSlot);
     void sellPet(int slotIndex);
+    bool movePet(int fromSlot, int toSlot);
+    bool combinePets(int fromSlot, int toSlot);
     void clearTeam();
 };
 

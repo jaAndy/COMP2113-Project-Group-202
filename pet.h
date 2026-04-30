@@ -33,6 +33,8 @@ public:
     void buffStats(int attackBonus, int hpBonus);
     void increaseLevel();
     void addExperience(int amount);
+    int getTotalCopies() const;
+    void setFromTotalCopies(int totalCopies);
 
     virtual Pet* clone() const;
     virtual void triggerSkill();

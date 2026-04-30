@@ -274,6 +274,8 @@ void Game::drawUI(Pet** activePlayerTeam, Pet** activeEnemyTeam) {
     std::cout << "  " << GREEN << "[ r ]" << RESET << "     : Roll Shop (-1 Gold)" << std::endl;
     std::cout << "  " << GREEN << "[ b A 1 ]" << RESET << " : Buy Shop Pet 'A' -> Team Slot 1" << std::endl;
     std::cout << "  " << GREEN << "[ s 1 ]" << RESET << "   : Sell Team Pet in Slot 1" << std::endl;
+    std::cout << "  " << GREEN << "[ m 1 4 ]" << RESET << " : Move/Swap Team Slot 1 and 4" << std::endl;
+    std::cout << "  " << GREEN << "[ c 1 4 ]" << RESET << " : Combine Slot 1 into Slot 4" << std::endl;
     std::cout << "  " << GREEN << "[ e ]" << RESET << "     : End Shop Phase & Start Battle" << std::endl;
     std::cout << CYAN << "=================================================" << RESET << std::endl;
     std::cout << "Action Input: ";
@@ -850,6 +852,68 @@ void Game::shopPhase() {
                 int soldLevel = soldPet->getLevel();
                 player->sellPet(targetSlot);
                 addLog("Sold " + soldName + " for " + std::to_string(soldLevel) + " gold.", true);
+            }
+        } else if (command == 'm') {
+            int fromSlot = -1;
+            int toSlot = -1;
+
+            if (cleanCommand.size() != 3) {
+                addLog("Invalid command format!", true);
+                continue;
+            }
+
+            if (cleanCommand[1] >= '1' && cleanCommand[1] <= '5') {
+                fromSlot = cleanCommand[1] - '1';
+            }
+
+            if (cleanCommand[2] >= '1' && cleanCommand[2] <= '5') {
+                toSlot = cleanCommand[2] - '1';
+            }
+
+            if (fromSlot < 0 || fromSlot >= 5 || toSlot < 0 || toSlot >= 5) {
+                addLog("Invalid command format!", true);
+            } else if (player->movePet(fromSlot, toSlot)) {
+                addLog("Moved team slot " + std::to_string(fromSlot + 1) + " and slot " + std::to_string(toSlot + 1) + ".", true);
+            } else {
+                addLog("Move failed. Source slot is empty.", true);
+            }
+        } else if (command == 'c') {
+            int fromSlot = -1;
+            int toSlot = -1;
+            Pet* sourcePet = nullptr;
+            Pet* targetPet = nullptr;
+
+            if (cleanCommand.size() != 3) {
+                addLog("Invalid command format!", true);
+                continue;
+            }
+
+            if (cleanCommand[1] >= '1' && cleanCommand[1] <= '5') {
+                fromSlot = cleanCommand[1] - '1';
+            }
+
+            if (cleanCommand[2] >= '1' && cleanCommand[2] <= '5') {
+                toSlot = cleanCommand[2] - '1';
+            }
+
+            if (fromSlot < 0 || fromSlot >= 5 || toSlot < 0 || toSlot >= 5 || fromSlot == toSlot) {
+                addLog("Invalid command format!", true);
+                continue;
+            }
+
+            sourcePet = player->getTeamPet(fromSlot);
+            targetPet = player->getTeamPet(toSlot);
+
+            if (sourcePet == nullptr || targetPet == nullptr) {
+                addLog("Combine failed. Both slots need pets.", true);
+            } else if (sourcePet->getName() != targetPet->getName()) {
+                addLog("Combine failed. Pets must be the same type.", true);
+            } else if (sourcePet->getLevel() >= 3 || targetPet->getLevel() >= 3) {
+                addLog("Combine failed. Lv3 pets cannot combine.", true);
+            } else if (player->combinePets(fromSlot, toSlot)) {
+                addLog("Combined slot " + std::to_string(fromSlot + 1) + " into slot " + std::to_string(toSlot + 1) + ".", true);
+            } else {
+                addLog("Combine failed.", true);
             }
         } else if (command == 'e') {
             if (cleanCommand.size() != 1) {
