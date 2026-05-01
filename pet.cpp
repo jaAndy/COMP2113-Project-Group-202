@@ -162,6 +162,59 @@ void Pet::addExperience(int amount) {
     }
 }
 
+// What it does: Converts the current level and progress into total pet copies.
+// What the inputs are: None.
+// What the outputs are: Returns the total copy count between one and six.
+int Pet::getTotalCopies() const {
+    if (level <= 1) {
+        return 1 + experience;
+    }
+
+    if (level == 2) {
+        return 3 + experience;
+    }
+
+    return 6;
+}
+
+// What it does: Sets level and progress based on a total pet copy count.
+// What the inputs are: The total copy count.
+// What the outputs are: Updates this pet to the matching level and progress state.
+void Pet::setFromTotalCopies(int totalCopies) {
+    if (totalCopies <= 1) {
+        setLevel(1);
+        setExperience(0);
+        return;
+    }
+
+    if (totalCopies == 2) {
+        setLevel(1);
+        setExperience(1);
+        return;
+    }
+
+    if (totalCopies == 3) {
+        setLevel(2);
+        setExperience(0);
+        return;
+    }
+
+    if (totalCopies == 4) {
+        setLevel(2);
+        setExperience(1);
+        return;
+    }
+
+    if (totalCopies == 5) {
+        setLevel(2);
+        setExperience(2);
+        return;
+    }
+
+    setLevel(3);
+    setExperience(0);
+}
+
 // What it does: Creates a dynamic copy of the base pet.
 // What the inputs are: None.
 // What the outputs are: Returns a new pet pointer with copied stats and level.
