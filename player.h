@@ -20,6 +20,9 @@ public:
     Pet **getTeamArray();
 
     void addGold(int amount);
+    void setHp(int playerHp);
+    void setGold(int playerGold);
+    void setTeamPet(int slotIndex, Pet *pet);
     void resetGold();
     void loseHp(int amount);
     bool spendGold(int amount);

@@ -2,8 +2,10 @@
 
 #include <chrono>
 #include <cstdlib>
+#include <fstream>
 #include <iomanip>
 #include <iostream>
+#include <sstream>
 #include <thread>
 
 // What it does: Creates the game state and the first shop.
@@ -15,6 +17,10 @@ Game::Game()
     currentTurn = 1;
     wins = 0;
     difficultyMode = NORMAL_MODE;
+    saveAndQuitRequested = false;
+    resumeShopWithoutSetup = false;
+    goldFlash = false;
+    clearStatFlash();
 
     for (int i = 0; i < 3; i++)
     {
@@ -42,10 +48,10 @@ Game::~Game()
     clearEnemyTeam();
 }
 
-// What it does: Shows the title screen and lets the player choose a menu option.
+// What it does: Shows the title screen and lets the player choose the start option.
 // What the inputs are: None.
-// What the outputs are: Returns true to start the game, or false to exit.
-bool Game::selectDifficulty() {
+// What the outputs are: Returns true to enter the game loop, or false to exit.
+bool Game::showTitleMenu() {
     std::string choice;
 
     while (true) {
@@ -61,15 +67,22 @@ bool Game::selectDifficulty() {
 )";
         std::cout << YELLOW << "     Please maximize your terminal window to avoid UI misalignment!" << RESET << std::endl;
         std::cout << R"(
+                    NEW GAME
                     [1] Normal Mode
                     [2] Hard Mode
-                    [3] Exit Game
+
+                    LOAD GAME
+                    load : Load Game
+
+                    QUIT
+                    [3] Quit Game
 )";
         std::cout << std::endl;
         std::cout << "Choice: ";
 
         if (!std::getline(std::cin, choice)) {
             difficultyMode = NORMAL_MODE;
+            resumeShopWithoutSetup = false;
             addLog("Normal mode selected.");
             return true;
         }
@@ -78,6 +91,7 @@ bool Game::selectDifficulty() {
 
         if (choice == "1" || choice == "normal" || choice == "n") {
             difficultyMode = NORMAL_MODE;
+            resumeShopWithoutSetup = false;
             std::cout << "Starting CLI Auto Pets in Normal Mode." << std::endl;
             addLog("Normal mode selected.");
             return true;
@@ -85,17 +99,28 @@ bool Game::selectDifficulty() {
 
         if (choice == "2" || choice == "hard" || choice == "h") {
             difficultyMode = HARD_MODE;
+            resumeShopWithoutSetup = false;
             std::cout << "Hard Mode enabled. Good luck." << std::endl;
             addLog("Hard mode selected.");
             return true;
         }
 
-        if (choice == "3" || choice == "exit" || choice == "x") {
+        if (choice == "load") {
+            if (loadGameFromFile("cli_auto_pets_save.txt")) {
+                return true;
+            }
+
+            std::cout << "No valid save file found. Press Enter to return to menu.";
+            std::getline(std::cin, choice);
+            continue;
+        }
+
+        if (choice == "3" || choice == "quit" || choice == "exit" || choice == "q" || choice == "x") {
             std::cout << "Goodbye!" << std::endl;
             return false;
         }
 
-        std::cout << "Invalid difficulty choice. Press Enter to try again.";
+        std::cout << "Invalid menu choice. Press Enter to try again.";
         std::getline(std::cin, choice);
     }
 }
@@ -109,6 +134,477 @@ std::string Game::getDifficultyName() const {
     }
 
     return "Normal";
+}
+
+// What it does: Writes one pet slot to the save file.
+// What the inputs are: The output file, slot label, and pet pointer.
+// What the outputs are: Writes one EMPTY or pet data line to the file.
+void Game::writePetSaveLine(std::ofstream &outputFile, const std::string &slotLabel, Pet *pet)
+{
+    outputFile << slotLabel;
+
+    if (pet == nullptr)
+    {
+        outputFile << " EMPTY" << std::endl;
+        return;
+    }
+
+    outputFile << " " << pet->getName();
+    outputFile << " " << pet->getAttack();
+    outputFile << " " << pet->getHp();
+    outputFile << " " << pet->getLevel();
+    outputFile << " " << pet->getExperience();
+    outputFile << std::endl;
+}
+
+// What it does: Saves the current shop-phase game state to a text file.
+// What the inputs are: The save file name.
+// What the outputs are: Returns true if the save file is written successfully, otherwise false.
+bool Game::saveGameToFile(const std::string &fileName)
+{
+    std::ofstream outputFile(fileName.c_str());
+
+    if (!outputFile.good())
+    {
+        return false;
+    }
+
+    outputFile << "CLI_AUTO_PETS_SAVE_V1" << std::endl;
+    outputFile << "PHASE SHOP" << std::endl;
+    outputFile << "DIFFICULTY " << getDifficultyName() << std::endl;
+    outputFile << "TURN " << currentTurn << std::endl;
+    outputFile << "WINS " << wins << std::endl;
+    outputFile << "PLAYER_HP " << player->getHp() << std::endl;
+    outputFile << "PLAYER_GOLD " << player->getGold() << std::endl;
+
+    outputFile << "PLAYER_TEAM_BEGIN" << std::endl;
+    for (int i = 0; i < 5; i++)
+    {
+        writePetSaveLine(outputFile, "TEAM_SLOT " + std::to_string(i + 1), player->getTeamPet(i));
+    }
+    outputFile << "PLAYER_TEAM_END" << std::endl;
+
+    outputFile << "SHOP_BEGIN" << std::endl;
+    for (int i = 0; i < 3; i++)
+    {
+        std::string slotLabel = "SHOP_SLOT ";
+        slotLabel = slotLabel + static_cast<char>('A' + i);
+        writePetSaveLine(outputFile, slotLabel, shopPets[i]);
+    }
+    outputFile << "SHOP_END" << std::endl;
+
+    outputFile << "MESSAGE_LOG_BEGIN" << std::endl;
+    outputFile << "MESSAGE_COUNT " << messageLog.size() << std::endl;
+    for (int i = 0; i < static_cast<int>(messageLog.size()); i++)
+    {
+        outputFile << "LOG " << messageLog[i] << std::endl;
+    }
+    outputFile << "MESSAGE_LOG_END" << std::endl;
+    outputFile << "END_SAVE" << std::endl;
+
+    outputFile.close();
+    return !outputFile.fail();
+}
+
+// What it does: Reads one exact line from a save file.
+// What the inputs are: The input file and the expected line text.
+// What the outputs are: Returns true if the next line matches exactly, otherwise false.
+bool Game::readExpectedLine(std::ifstream &inputFile, const std::string &expectedLine)
+{
+    std::string line;
+
+    if (!std::getline(inputFile, line))
+    {
+        return false;
+    }
+
+    return line == expectedLine;
+}
+
+// What it does: Reads one integer value line from a save file.
+// What the inputs are: The input file, expected key, and integer output variable.
+// What the outputs are: Returns true if the key and value are read successfully.
+bool Game::readSaveIntLine(std::ifstream &inputFile, const std::string &expectedKey, int &value)
+{
+    std::string line;
+    std::string key;
+    std::istringstream lineStream;
+
+    if (!std::getline(inputFile, line))
+    {
+        return false;
+    }
+
+    lineStream.str(line);
+
+    if (!(lineStream >> key >> value))
+    {
+        return false;
+    }
+
+    return key == expectedKey;
+}
+
+// What it does: Creates a pet object from a saved pet name.
+// What the inputs are: The saved pet name.
+// What the outputs are: Returns a new pet pointer, or nullptr if the name is unknown.
+Pet *Game::createPetByName(const std::string &petName)
+{
+    if (petName == "Swan")
+    {
+        return new Swan();
+    }
+    else if (petName == "Ant")
+    {
+        return new Ant();
+    }
+    else if (petName == "Mosquito")
+    {
+        return new Mosquito();
+    }
+    else if (petName == "Camel")
+    {
+        return new Camel();
+    }
+    else if (petName == "Skunk")
+    {
+        return new Skunk();
+    }
+    else if (petName == "Elephant")
+    {
+        return new Elephant();
+    }
+    else if (petName == "Hippo")
+    {
+        return new Hippo();
+    }
+    else if (petName == "Blowfish")
+    {
+        return new Blowfish();
+    }
+    else if (petName == "Monkey")
+    {
+        return new Monkey();
+    }
+
+    return nullptr;
+}
+
+// What it does: Reads one saved pet entry from a line stream.
+// What the inputs are: The line stream after the slot label and the pet output pointer.
+// What the outputs are: Returns true if an empty slot or valid pet is read.
+bool Game::readPetSaveLine(std::istringstream &lineStream, Pet *&pet)
+{
+    std::string petName;
+    int attack = 0;
+    int hp = 0;
+    int level = 0;
+    int experience = 0;
+
+    pet = nullptr;
+
+    if (!(lineStream >> petName))
+    {
+        return false;
+    }
+
+    if (petName == "EMPTY")
+    {
+        return true;
+    }
+
+    if (!(lineStream >> attack >> hp >> level >> experience))
+    {
+        return false;
+    }
+
+    if (attack < 0 || hp < 0 || level < 1 || level > 3 || experience < 0)
+    {
+        return false;
+    }
+
+    if ((level == 1 && experience > 1) || (level == 2 && experience > 2) || (level == 3 && experience > 0))
+    {
+        return false;
+    }
+
+    pet = createPetByName(petName);
+
+    if (pet == nullptr)
+    {
+        return false;
+    }
+
+    pet->setAttack(attack);
+    pet->setHp(hp);
+    pet->setLevel(level);
+    pet->setExperience(experience);
+    return true;
+}
+
+// What it does: Loads a saved shop-phase game state from a text file.
+// What the inputs are: The save file name.
+// What the outputs are: Returns true if the save is loaded and applied successfully.
+bool Game::loadGameFromFile(const std::string &fileName)
+{
+    std::ifstream inputFile(fileName.c_str());
+    Pet *loadedTeam[5];
+    Pet *loadedShop[3];
+    std::vector<std::string> loadedMessages;
+    DifficultyMode loadedDifficulty = NORMAL_MODE;
+    int loadedTurn = 0;
+    int loadedWins = 0;
+    int loadedHp = 0;
+    int loadedGold = 0;
+    int messageCount = 0;
+    bool success = true;
+    std::string line;
+    std::string key;
+    std::string difficultyName;
+
+    for (int i = 0; i < 5; i++)
+    {
+        loadedTeam[i] = nullptr;
+    }
+
+    for (int i = 0; i < 3; i++)
+    {
+        loadedShop[i] = nullptr;
+    }
+
+    if (!inputFile.good())
+    {
+        return false;
+    }
+
+    if (!readExpectedLine(inputFile, "CLI_AUTO_PETS_SAVE_V1"))
+    {
+        success = false;
+    }
+
+    if (success && !readExpectedLine(inputFile, "PHASE SHOP"))
+    {
+        success = false;
+    }
+
+    if (success)
+    {
+        std::istringstream lineStream;
+
+        if (!std::getline(inputFile, line))
+        {
+            success = false;
+        }
+        else
+        {
+            lineStream.str(line);
+
+            if (!(lineStream >> key >> difficultyName) || key != "DIFFICULTY")
+            {
+                success = false;
+            }
+            else if (difficultyName == "Normal")
+            {
+                loadedDifficulty = NORMAL_MODE;
+            }
+            else if (difficultyName == "Hard")
+            {
+                loadedDifficulty = HARD_MODE;
+            }
+            else
+            {
+                success = false;
+            }
+        }
+    }
+
+    if (success && !readSaveIntLine(inputFile, "TURN", loadedTurn))
+    {
+        success = false;
+    }
+
+    if (success && !readSaveIntLine(inputFile, "WINS", loadedWins))
+    {
+        success = false;
+    }
+
+    if (success && !readSaveIntLine(inputFile, "PLAYER_HP", loadedHp))
+    {
+        success = false;
+    }
+
+    if (success && !readSaveIntLine(inputFile, "PLAYER_GOLD", loadedGold))
+    {
+        success = false;
+    }
+
+    if (success && (loadedTurn < 1 || loadedWins < 0 || loadedHp < 0 || loadedGold < 0))
+    {
+        success = false;
+    }
+
+    if (success && !readExpectedLine(inputFile, "PLAYER_TEAM_BEGIN"))
+    {
+        success = false;
+    }
+
+    for (int i = 0; success && i < 5; i++)
+    {
+        std::istringstream lineStream;
+        std::string slotKey;
+        int slotIndex = 0;
+
+        if (!std::getline(inputFile, line))
+        {
+            success = false;
+        }
+        else
+        {
+            lineStream.str(line);
+
+            if (!(lineStream >> slotKey >> slotIndex) || slotKey != "TEAM_SLOT" || slotIndex != i + 1)
+            {
+                success = false;
+            }
+            else if (!readPetSaveLine(lineStream, loadedTeam[i]))
+            {
+                success = false;
+            }
+        }
+    }
+
+    if (success && !readExpectedLine(inputFile, "PLAYER_TEAM_END"))
+    {
+        success = false;
+    }
+
+    if (success && !readExpectedLine(inputFile, "SHOP_BEGIN"))
+    {
+        success = false;
+    }
+
+    for (int i = 0; success && i < 3; i++)
+    {
+        std::istringstream lineStream;
+        std::string slotKey;
+        char slotLetter = 'A';
+
+        if (!std::getline(inputFile, line))
+        {
+            success = false;
+        }
+        else
+        {
+            lineStream.str(line);
+
+            if (!(lineStream >> slotKey >> slotLetter) || slotKey != "SHOP_SLOT" || slotLetter != static_cast<char>('A' + i))
+            {
+                success = false;
+            }
+            else if (!readPetSaveLine(lineStream, loadedShop[i]))
+            {
+                success = false;
+            }
+        }
+    }
+
+    if (success && !readExpectedLine(inputFile, "SHOP_END"))
+    {
+        success = false;
+    }
+
+    if (success && !readExpectedLine(inputFile, "MESSAGE_LOG_BEGIN"))
+    {
+        success = false;
+    }
+
+    if (success && !readSaveIntLine(inputFile, "MESSAGE_COUNT", messageCount))
+    {
+        success = false;
+    }
+
+    if (success && (messageCount < 0 || messageCount > 5))
+    {
+        success = false;
+    }
+
+    for (int i = 0; success && i < messageCount; i++)
+    {
+        if (!std::getline(inputFile, line))
+        {
+            success = false;
+        }
+        else if (line == "LOG")
+        {
+            loadedMessages.push_back("");
+        }
+        else if (line.size() >= 4 && line.substr(0, 4) == "LOG ")
+        {
+            loadedMessages.push_back(line.substr(4));
+        }
+        else
+        {
+            success = false;
+        }
+    }
+
+    if (success && !readExpectedLine(inputFile, "MESSAGE_LOG_END"))
+    {
+        success = false;
+    }
+
+    if (success && !readExpectedLine(inputFile, "END_SAVE"))
+    {
+        success = false;
+    }
+
+    if (success)
+    {
+        clearShop();
+        clearEnemyTeam();
+        player->clearTeam();
+
+        difficultyMode = loadedDifficulty;
+        currentTurn = loadedTurn;
+        wins = loadedWins;
+        player->setHp(loadedHp);
+        player->setGold(loadedGold);
+        messageLog = loadedMessages;
+        saveAndQuitRequested = false;
+        resumeShopWithoutSetup = true;
+
+        for (int i = 0; i < 5; i++)
+        {
+            player->setTeamPet(i, loadedTeam[i]);
+            loadedTeam[i] = nullptr;
+        }
+
+        for (int i = 0; i < 3; i++)
+        {
+            shopPets[i] = loadedShop[i];
+            loadedShop[i] = nullptr;
+        }
+    }
+
+    for (int i = 0; i < 5; i++)
+    {
+        if (loadedTeam[i] != nullptr)
+        {
+            delete loadedTeam[i];
+            loadedTeam[i] = nullptr;
+        }
+    }
+
+    for (int i = 0; i < 3; i++)
+    {
+        if (loadedShop[i] != nullptr)
+        {
+            delete loadedShop[i];
+            loadedShop[i] = nullptr;
+        }
+    }
+
+    return success;
 }
 
 // What it does: Adds a message to the game message log.
@@ -126,7 +622,7 @@ void Game::addLog(std::string msg, bool autoDelay, Pet **activePlayerTeam, Pet *
     if (autoDelay)
     {
         drawUI(activePlayerTeam, activeEnemyTeam);
-        std::this_thread::sleep_for(std::chrono::milliseconds(800));
+        std::this_thread::sleep_for(std::chrono::milliseconds(900));
     }
 }
 
@@ -135,26 +631,44 @@ void Game::addLog(std::string msg, bool autoDelay, Pet **activePlayerTeam, Pet *
 // What the outputs are: Prints one aligned cell content line.
 void Game::printBoxCell(std::string text, int width)
 {
-    int visualLength = static_cast<int>(text.size());
+    std::string visibleText;
+    int visualLength = 0;
     std::string::size_type dotPosition;
 
-    if (text.find("♥") != std::string::npos)
+    for (int i = 0; i < static_cast<int>(text.size()); i++)
+    {
+        if (text[i] == '\033')
+        {
+            while (i < static_cast<int>(text.size()) && text[i] != 'm')
+            {
+                i++;
+            }
+        }
+        else
+        {
+            visibleText = visibleText + text[i];
+        }
+    }
+
+    visualLength = static_cast<int>(visibleText.size());
+
+    if (visibleText.find("♥") != std::string::npos)
     {
         visualLength = visualLength - 2;
     }
 
-    dotPosition = text.find("●");
+    dotPosition = visibleText.find("●");
     while (dotPosition != std::string::npos)
     {
         visualLength = visualLength - 2;
-        dotPosition = text.find("●", dotPosition + 1);
+        dotPosition = visibleText.find("●", dotPosition + 1);
     }
 
-    dotPosition = text.find("○");
+    dotPosition = visibleText.find("○");
     while (dotPosition != std::string::npos)
     {
         visualLength = visualLength - 2;
-        dotPosition = text.find("○", dotPosition + 1);
+        dotPosition = visibleText.find("○", dotPosition + 1);
     }
 
     std::cout << "|" << text;
@@ -165,6 +679,41 @@ void Game::printBoxCell(std::string text, int width)
     }
 
     std::cout << "|";
+}
+
+// What it does: Applies a red or green flash color to stat text.
+// What the inputs are: The value text and flash state.
+// What the outputs are: Returns colored text when the flash state is active.
+std::string Game::applyStatColor(std::string valueText, int flashState)
+{
+    if (flashState == 1)
+    {
+        return std::string(RED) + valueText + RESET;
+    }
+
+    if (flashState == 2)
+    {
+        return std::string(GREEN) + valueText + RESET;
+    }
+
+    return valueText;
+}
+
+// What it does: Builds the pet attack and health display line.
+// What the inputs are: The pet pointer and flash states for attack and health.
+// What the outputs are: Returns a stats line with colored changed values.
+std::string Game::getPetStatsLine(Pet *pet, int attackFlash, int hpFlash)
+{
+    std::string statsLine = "";
+
+    if (pet == nullptr)
+    {
+        return statsLine;
+    }
+
+    statsLine = "ATK:" + applyStatColor(std::to_string(pet->getAttack()), attackFlash);
+    statsLine = statsLine + " HP:♥" + applyStatColor(std::to_string(pet->getHp()), hpFlash);
+    return statsLine;
 }
 
 // What it does: Builds the pet name and experience display line.
@@ -262,6 +811,127 @@ std::string Game::formatBattleLog(int roundNumber, const std::string &tag, const
     return "[START][" + tag + "] " + detail;
 }
 
+// What it does: Gets the base stat description for one pet.
+// What the inputs are: The lowercase pet name.
+// What the outputs are: Returns the base stat line, or an empty string for an unknown pet.
+std::string Game::getPetBaseStatsLine(std::string petName)
+{
+    if (petName == "swan")
+    {
+        return "Swan base stats: ATK 1, HP 2.";
+    }
+    else if (petName == "ant")
+    {
+        return "Ant base stats: ATK 2, HP 2.";
+    }
+    else if (petName == "mosquito")
+    {
+        return "Mosquito base stats: ATK 2, HP 2.";
+    }
+    else if (petName == "camel")
+    {
+        return "Camel base stats: ATK 3, HP 3.";
+    }
+    else if (petName == "skunk")
+    {
+        return "Skunk base stats: ATK 3, HP 5.";
+    }
+    else if (petName == "elephant")
+    {
+        return "Elephant base stats: ATK 3, HP 7.";
+    }
+    else if (petName == "hippo")
+    {
+        return "Hippo base stats: ATK 3, HP 6.";
+    }
+    else if (petName == "blowfish")
+    {
+        return "Blowfish base stats: ATK 3, HP 6.";
+    }
+    else if (petName == "monkey")
+    {
+        return "Monkey base stats: ATK 1, HP 2.";
+    }
+
+    return "";
+}
+
+// What it does: Gets one level skill description for one pet.
+// What the inputs are: The lowercase pet name and skill level.
+// What the outputs are: Returns the level skill line, or an empty string for an unknown pet.
+std::string Game::getPetSkillLine(std::string petName, int level)
+{
+    std::string levelText = "Lv" + std::to_string(level) + ": ";
+
+    if (petName == "swan")
+    {
+        return levelText + "At shop start, gain " + std::to_string(level) + " gold.";
+    }
+    else if (petName == "ant")
+    {
+        return levelText + "On faint, give one random living ally +" + std::to_string(level) + " ATK and +" + std::to_string(level) + " HP.";
+    }
+    else if (petName == "mosquito")
+    {
+        return levelText + "At battle start, deal 1 damage to " + std::to_string(level) + " random living enemy pet(s).";
+    }
+    else if (petName == "camel")
+    {
+        return levelText + "When hurt, give the nearest living ally behind +" + std::to_string(level) + " ATK and +" + std::to_string(2 * level) + " HP.";
+    }
+    else if (petName == "skunk")
+    {
+        if (level == 1)
+        {
+            return levelText + "At battle start, reduce the highest-health enemy by 1/3 of its current HP.";
+        }
+        else if (level == 2)
+        {
+            return levelText + "At battle start, reduce the highest-health enemy by 2/3 of its current HP.";
+        }
+
+        return levelText + "At battle start, reduce the highest-health enemy by 99% of its current HP.";
+    }
+    else if (petName == "elephant")
+    {
+        return levelText + "On attack, deal 1 damage to the nearest living ally behind " + std::to_string(level) + " time(s).";
+    }
+    else if (petName == "hippo")
+    {
+        return levelText + "On knockout, gain +" + std::to_string(3 * level) + " ATK and +" + std::to_string(3 * level) + " HP, up to 3 times per battle.";
+    }
+    else if (petName == "blowfish")
+    {
+        return levelText + "When hurt, deal " + std::to_string(3 * level) + " damage to one random living enemy.";
+    }
+    else if (petName == "monkey")
+    {
+        return levelText + "At shop end, give the front-most other living ally +" + std::to_string(2 * level) + " ATK and +" + std::to_string(2 * level) + " HP.";
+    }
+
+    return "";
+}
+
+// What it does: Shows one pet's base stats and level skills in the message log.
+// What the inputs are: The lowercase pet name to view.
+// What the outputs are: Adds pet info messages and returns true if the pet is known.
+bool Game::showPetInfo(std::string petName)
+{
+    std::string baseStatsLine = getPetBaseStatsLine(petName);
+
+    if (baseStatsLine == "")
+    {
+        addLog("Unknown pet. Try swan, ant, mosquito, camel, skunk, elephant, hippo, blowfish, or monkey.");
+        return false;
+    }
+
+    addLog(baseStatsLine);
+    addLog(getPetSkillLine(petName, 1));
+    addLog(getPetSkillLine(petName, 2));
+    addLog(getPetSkillLine(petName, 3));
+    return true;
+}
+
 // What it does: Draws the full shop phase user interface.
 // What the inputs are: Optional active player and enemy teams to display.
 // What the outputs are: Prints the game stats, team, shop, menu, log, and input prompt.
@@ -283,7 +953,14 @@ void Game::drawUI(Pet **activePlayerTeam, Pet **activeEnemyTeam)
     std::cout << "\033[2J\033[1;1H";
 
     std::cout << CYAN << "================================================================================" << RESET << std::endl;
-    std::cout << YELLOW << "[ Gold: " << player->getGold() << " ]" << RESET << "  ";
+    if (goldFlash)
+    {
+        std::cout << WHITE << "[ Gold: " << player->getGold() << " ]" << RESET << "  ";
+    }
+    else
+    {
+        std::cout << YELLOW << "[ Gold: " << player->getGold() << " ]" << RESET << "  ";
+    }
     std::cout << RED << "[ HP: ♥x" << player->getHp() << " ]" << RESET << "  ";
     std::cout << "[ Turn: " << currentTurn << " ]  ";
     std::cout << "[ Wins: " << wins << "/10 ]  ";
@@ -312,13 +989,20 @@ void Game::drawUI(Pet **activePlayerTeam, Pet **activeEnemyTeam)
     {
         Pet *pet = player->getTeamPet(i);
         std::string nameLine;
+        int nameFlash = 0;
 
         if (activePlayerTeam != nullptr)
         {
             pet = activePlayerTeam[i];
+            nameFlash = playerNameFlash[i];
         }
 
         nameLine = getPetNameLine(pet);
+
+        if (pet != nullptr)
+        {
+            nameLine = applyStatColor(nameLine, nameFlash);
+        }
 
         printBoxCell(nameLine, 17);
     }
@@ -327,17 +1011,17 @@ void Game::drawUI(Pet **activePlayerTeam, Pet **activeEnemyTeam)
     {
         Pet *pet = player->getTeamPet(i);
         std::string statsLine = "";
+        int attackFlash = 0;
+        int hpFlash = 0;
 
         if (activePlayerTeam != nullptr)
         {
             pet = activePlayerTeam[i];
+            attackFlash = playerAttackFlash[i];
+            hpFlash = playerHpFlash[i];
         }
 
-        if (pet != nullptr)
-        {
-            statsLine = "ATK:" + std::to_string(pet->getAttack());
-            statsLine = statsLine + " HP:♥" + std::to_string(pet->getHp());
-        }
+        statsLine = getPetStatsLine(pet, attackFlash, hpFlash);
 
         printBoxCell(statsLine, 17);
     }
@@ -394,6 +1078,7 @@ void Game::drawUI(Pet **activePlayerTeam, Pet **activeEnemyTeam)
     {
         Pet *pet = nullptr;
         std::string nameLine;
+        int nameFlash = 0;
 
         if (activeEnemyTeam == nullptr && i >= 3)
         {
@@ -407,9 +1092,15 @@ void Game::drawUI(Pet **activePlayerTeam, Pet **activeEnemyTeam)
         else
         {
             pet = activeEnemyTeam[i];
+            nameFlash = enemyNameFlash[i];
         }
 
         nameLine = getPetNameLine(pet);
+
+        if (pet != nullptr)
+        {
+            nameLine = applyStatColor(nameLine, nameFlash);
+        }
 
         printBoxCell(nameLine, 17);
     }
@@ -418,6 +1109,8 @@ void Game::drawUI(Pet **activePlayerTeam, Pet **activeEnemyTeam)
     {
         Pet *pet = nullptr;
         std::string statsLine = "";
+        int attackFlash = 0;
+        int hpFlash = 0;
 
         if (activeEnemyTeam == nullptr && i >= 3)
         {
@@ -431,13 +1124,11 @@ void Game::drawUI(Pet **activePlayerTeam, Pet **activeEnemyTeam)
         else
         {
             pet = activeEnemyTeam[i];
+            attackFlash = enemyAttackFlash[i];
+            hpFlash = enemyHpFlash[i];
         }
 
-        if (pet != nullptr)
-        {
-            statsLine = "ATK:" + std::to_string(pet->getAttack());
-            statsLine = statsLine + " HP:♥" + std::to_string(pet->getHp());
-        }
+        statsLine = getPetStatsLine(pet, attackFlash, hpFlash);
 
         printBoxCell(statsLine, 17);
     }
@@ -468,6 +1159,8 @@ void Game::drawUI(Pet **activePlayerTeam, Pet **activeEnemyTeam)
     std::cout << "  " << GREEN << "[ m 1 4 ]" << RESET << " : Move/Swap Team Slot 1 and 4" << std::endl;
     std::cout << "  " << GREEN << "[ c 1 4 ]" << RESET << " : Combine Slot 1 into Slot 4" << std::endl;
     std::cout << "  " << GREEN << "[ e ]" << RESET << "     : End Shop Phase & Start Battle" << std::endl;
+    std::cout << "  " << GREEN << "[ view swan ]" << RESET << " : View Pet Info" << std::endl;
+    std::cout << "  " << GREEN << "[ saveq ]" << RESET << " : Save and Quit" << std::endl;
     std::cout << CYAN << "=================================================" << RESET << std::endl;
     std::cout << "Action Input: ";
 }
@@ -554,6 +1247,154 @@ void Game::clearEnemyTeam()
             enemyTeam[i] = nullptr;
         }
     }
+}
+
+// What it does: Briefly flashes the gold display in white.
+// What the inputs are: None.
+// What the outputs are: Draws a short white gold pulse in the shop interface.
+void Game::flashGoldChange()
+{
+    const int flashMilliseconds = 300;
+
+    goldFlash = true;
+    drawUI();
+    std::cout.flush();
+    std::this_thread::sleep_for(std::chrono::milliseconds(flashMilliseconds));
+    goldFlash = false;
+    drawUI();
+    std::cout.flush();
+}
+
+// What it does: Clears all temporary battle stat flash markers.
+// What the inputs are: None.
+// What the outputs are: Resets player and enemy name, attack, and health flash states.
+void Game::clearStatFlash()
+{
+    for (int i = 0; i < 5; i++)
+    {
+        playerNameFlash[i] = 0;
+        playerAttackFlash[i] = 0;
+        playerHpFlash[i] = 0;
+        enemyNameFlash[i] = 0;
+        enemyAttackFlash[i] = 0;
+        enemyHpFlash[i] = 0;
+    }
+}
+
+// What it does: Captures attack and health values from one team.
+// What the inputs are: The team pointer array and output arrays for attack and health.
+// What the outputs are: Stores current stats, or negative values for empty slots.
+void Game::captureTeamStats(Pet *team[5], int attackValues[5], int hpValues[5])
+{
+    for (int i = 0; i < 5; i++)
+    {
+        attackValues[i] = -1;
+        hpValues[i] = -1;
+
+        if (team != nullptr && team[i] != nullptr)
+        {
+            attackValues[i] = team[i]->getAttack();
+            hpValues[i] = team[i]->getHp();
+        }
+    }
+}
+
+// What it does: Marks flash states for stat changes after an event.
+// What the inputs are: The team, before stats, and whether it is the player team.
+// What the outputs are: Returns true if any attack or health value changed.
+bool Game::markStatFlash(Pet *team[5], int beforeAttack[5], int beforeHp[5], bool isPlayerTeam)
+{
+    bool hasChange = false;
+
+    if (team == nullptr)
+    {
+        return false;
+    }
+
+    for (int i = 0; i < 5; i++)
+    {
+        int attackFlash = 0;
+        int hpFlash = 0;
+        int nameFlash = 0;
+
+        if (team[i] != nullptr && beforeAttack[i] >= 0 && beforeHp[i] >= 0)
+        {
+            if (team[i]->getAttack() < beforeAttack[i])
+            {
+                attackFlash = 1;
+                nameFlash = 1;
+                hasChange = true;
+            }
+            else if (team[i]->getAttack() > beforeAttack[i])
+            {
+                attackFlash = 2;
+                nameFlash = 2;
+                hasChange = true;
+            }
+
+            if (team[i]->getHp() < beforeHp[i])
+            {
+                hpFlash = 1;
+                nameFlash = 1;
+                hasChange = true;
+            }
+            else if (team[i]->getHp() > beforeHp[i])
+            {
+                hpFlash = 2;
+
+                if (nameFlash == 0)
+                {
+                    nameFlash = 2;
+                }
+
+                hasChange = true;
+            }
+        }
+
+        if (isPlayerTeam)
+        {
+            playerNameFlash[i] = nameFlash;
+            playerAttackFlash[i] = attackFlash;
+            playerHpFlash[i] = hpFlash;
+        }
+        else
+        {
+            enemyNameFlash[i] = nameFlash;
+            enemyAttackFlash[i] = attackFlash;
+            enemyHpFlash[i] = hpFlash;
+        }
+    }
+
+    return hasChange;
+}
+
+// What it does: Briefly flashes changed battle stats in the user interface.
+// What the inputs are: The active teams and their attack and health values before an event.
+// What the outputs are: Draws a short colored stat pulse if any stat changed.
+void Game::flashStatChanges(Pet *playerTeam[5], Pet *enemyTeam[5], int beforePlayerAttack[5], int beforePlayerHp[5], int beforeEnemyAttack[5], int beforeEnemyHp[5])
+{
+    bool hasPlayerChange = false;
+    bool hasEnemyChange = false;
+    const int flashMilliseconds = 300;
+    const int resetMilliseconds = 80;
+
+    clearStatFlash();
+    hasPlayerChange = markStatFlash(playerTeam, beforePlayerAttack, beforePlayerHp, true);
+    hasEnemyChange = markStatFlash(enemyTeam, beforeEnemyAttack, beforeEnemyHp, false);
+
+    if (!hasPlayerChange && !hasEnemyChange)
+    {
+        clearStatFlash();
+        return;
+    }
+
+    drawUI(playerTeam, enemyTeam);
+    std::cout.flush();
+    std::this_thread::sleep_for(std::chrono::milliseconds(flashMilliseconds));
+    clearStatFlash();
+    drawUI(playerTeam, enemyTeam);
+    std::cout.flush();
+    std::this_thread::sleep_for(std::chrono::milliseconds(resetMilliseconds));
 }
 
 // What it does: Copies the player's team into a temporary team.
@@ -681,6 +1522,10 @@ void Game::removeFaintedPets(Pet *team[5], Pet **activePlayerTeam, Pet **activeE
             int allyAtkBefore[5];
             int allyHpBefore[5];
             int buffTargetIndex = -1;
+            int beforePlayerAttack[5];
+            int beforePlayerHp[5];
+            int beforeEnemyAttack[5];
+            int beforeEnemyHp[5];
 
             for (int j = 0; j < 5; j++)
             {
@@ -694,7 +1539,10 @@ void Game::removeFaintedPets(Pet *team[5], Pet **activePlayerTeam, Pet **activeE
                 }
             }
 
+            captureTeamStats(activePlayerTeam, beforePlayerAttack, beforePlayerHp);
+            captureTeamStats(activeEnemyTeam, beforeEnemyAttack, beforeEnemyHp);
             team[i]->onFaint(team, 5);
+            flashStatChanges(activePlayerTeam, activeEnemyTeam, beforePlayerAttack, beforePlayerHp, beforeEnemyAttack, beforeEnemyHp);
 
             if (faintedName == "Ant")
             {
@@ -1129,6 +1977,10 @@ int Game::battlePhase()
     Pet *tempEnemyTeam[5];
     int battleResult = 0;
     int roundNumber = 1;
+    int beforePlayerAttack[5];
+    int beforePlayerHp[5];
+    int beforeEnemyAttack[5];
+    int beforeEnemyHp[5];
 
     for (int i = 0; i < 5; i++)
     {
@@ -1154,6 +2006,7 @@ int Game::battlePhase()
         }
     }
 
+    clearStatFlash();
     addLog(formatBattleLog(0, "PHASE", "Battle started. Frontline is on the right side."), true, tempPlayerTeam, tempEnemyTeam);
 
     for (int i = 0; i < 5; i++)
@@ -1175,7 +2028,10 @@ int Game::battlePhase()
                 }
             }
 
+            captureTeamStats(tempPlayerTeam, beforePlayerAttack, beforePlayerHp);
+            captureTeamStats(tempEnemyTeam, beforeEnemyAttack, beforeEnemyHp);
             tempPlayerTeam[i]->onBattleStart(tempEnemyTeam, 5);
+            flashStatChanges(tempPlayerTeam, tempEnemyTeam, beforePlayerAttack, beforePlayerHp, beforeEnemyAttack, beforeEnemyHp);
 
             if (petName == "Mosquito")
             {
@@ -1244,7 +2100,10 @@ int Game::battlePhase()
                 }
             }
 
+            captureTeamStats(tempPlayerTeam, beforePlayerAttack, beforePlayerHp);
+            captureTeamStats(tempEnemyTeam, beforeEnemyAttack, beforeEnemyHp);
             tempEnemyTeam[i]->onBattleStart(tempPlayerTeam, 5);
+            flashStatChanges(tempPlayerTeam, tempEnemyTeam, beforePlayerAttack, beforePlayerHp, beforeEnemyAttack, beforeEnemyHp);
 
             if (petName == "Mosquito")
             {
@@ -1332,7 +2191,10 @@ int Game::battlePhase()
         std::string playerName = colorPetName(playerFront->getName(), true);
         std::string enemyName = colorPetName(enemyFront->getName(), false);
 
+        captureTeamStats(tempPlayerTeam, beforePlayerAttack, beforePlayerHp);
+        captureTeamStats(tempEnemyTeam, beforeEnemyAttack, beforeEnemyHp);
         playerFront->onAttack(tempPlayerTeam, playerFrontIndex, 5);
+        flashStatChanges(tempPlayerTeam, tempEnemyTeam, beforePlayerAttack, beforePlayerHp, beforeEnemyAttack, beforeEnemyHp);
         if (playerFront->getName() == "Elephant")
         {
             int targetIndex = -1;
@@ -1359,7 +2221,10 @@ int Game::battlePhase()
         removeFaintedPets(tempPlayerTeam, tempPlayerTeam, tempEnemyTeam, "Player", true, roundNumber);
         removeFaintedPets(tempEnemyTeam, tempPlayerTeam, tempEnemyTeam, "Enemy", false, roundNumber);
 
+        captureTeamStats(tempPlayerTeam, beforePlayerAttack, beforePlayerHp);
+        captureTeamStats(tempEnemyTeam, beforeEnemyAttack, beforeEnemyHp);
         enemyFront->onAttack(tempEnemyTeam, enemyFrontIndex, 5);
+        flashStatChanges(tempPlayerTeam, tempEnemyTeam, beforePlayerAttack, beforePlayerHp, beforeEnemyAttack, beforeEnemyHp);
         if (enemyFront->getName() == "Elephant")
         {
             int targetIndex = -1;
@@ -1406,8 +2271,11 @@ int Game::battlePhase()
         addLog(formatBattleLog(roundNumber, "ATTACK", playerName + " -> " + enemyName + ", DMG " + std::to_string(playerAttack) + "."), true, tempPlayerTeam, tempEnemyTeam);
         addLog(formatBattleLog(roundNumber, "ATTACK", enemyName + " -> " + playerName + ", DMG " + std::to_string(enemyAttack) + "."), true, tempPlayerTeam, tempEnemyTeam);
 
+        captureTeamStats(tempPlayerTeam, beforePlayerAttack, beforePlayerHp);
+        captureTeamStats(tempEnemyTeam, beforeEnemyAttack, beforeEnemyHp);
         enemyFront->takeDamage(playerAttack);
         playerFront->takeDamage(enemyAttack);
+        flashStatChanges(tempPlayerTeam, tempEnemyTeam, beforePlayerAttack, beforePlayerHp, beforeEnemyAttack, beforeEnemyHp);
         addLog(formatBattleLog(roundNumber, "STATE", playerName + " HP " + std::to_string(playerHpBeforeDamage) + "->" + std::to_string(playerFront->getHp()) + ", " + enemyName + " HP " + std::to_string(enemyHpBeforeDamage) + "->" + std::to_string(enemyFront->getHp()) + "."), true, tempPlayerTeam, tempEnemyTeam);
 
         if (playerFront->getHp() > 0 && playerFront->getHp() < playerHpBeforeDamage)
@@ -1429,7 +2297,10 @@ int Game::battlePhase()
                     }
                 }
 
+                captureTeamStats(tempPlayerTeam, beforePlayerAttack, beforePlayerHp);
+                captureTeamStats(tempEnemyTeam, beforeEnemyAttack, beforeEnemyHp);
                 playerFront->onHurt(tempPlayerTeam, playerFrontIndex, 5, tempEnemyTeam, 5);
+                flashStatChanges(tempPlayerTeam, tempEnemyTeam, beforePlayerAttack, beforePlayerHp, beforeEnemyAttack, beforeEnemyHp);
 
                 if (targetIndex >= 0 && tempPlayerTeam[targetIndex] != nullptr)
                 {
@@ -1456,7 +2327,10 @@ int Game::battlePhase()
                     }
                 }
 
+                captureTeamStats(tempPlayerTeam, beforePlayerAttack, beforePlayerHp);
+                captureTeamStats(tempEnemyTeam, beforeEnemyAttack, beforeEnemyHp);
                 playerFront->onHurt(tempPlayerTeam, playerFrontIndex, 5, tempEnemyTeam, 5);
+                flashStatChanges(tempPlayerTeam, tempEnemyTeam, beforePlayerAttack, beforePlayerHp, beforeEnemyAttack, beforeEnemyHp);
 
                 for (int k = 0; k < 5; k++)
                 {
@@ -1479,7 +2353,10 @@ int Game::battlePhase()
             }
             else
             {
+                captureTeamStats(tempPlayerTeam, beforePlayerAttack, beforePlayerHp);
+                captureTeamStats(tempEnemyTeam, beforeEnemyAttack, beforeEnemyHp);
                 playerFront->onHurt(tempPlayerTeam, playerFrontIndex, 5, tempEnemyTeam, 5);
+                flashStatChanges(tempPlayerTeam, tempEnemyTeam, beforePlayerAttack, beforePlayerHp, beforeEnemyAttack, beforeEnemyHp);
             }
         }
 
@@ -1502,7 +2379,10 @@ int Game::battlePhase()
                     }
                 }
 
+                captureTeamStats(tempPlayerTeam, beforePlayerAttack, beforePlayerHp);
+                captureTeamStats(tempEnemyTeam, beforeEnemyAttack, beforeEnemyHp);
                 enemyFront->onHurt(tempEnemyTeam, enemyFrontIndex, 5, tempPlayerTeam, 5);
+                flashStatChanges(tempPlayerTeam, tempEnemyTeam, beforePlayerAttack, beforePlayerHp, beforeEnemyAttack, beforeEnemyHp);
 
                 if (targetIndex >= 0 && tempEnemyTeam[targetIndex] != nullptr)
                 {
@@ -1529,7 +2409,10 @@ int Game::battlePhase()
                     }
                 }
 
+                captureTeamStats(tempPlayerTeam, beforePlayerAttack, beforePlayerHp);
+                captureTeamStats(tempEnemyTeam, beforeEnemyAttack, beforeEnemyHp);
                 enemyFront->onHurt(tempEnemyTeam, enemyFrontIndex, 5, tempPlayerTeam, 5);
+                flashStatChanges(tempPlayerTeam, tempEnemyTeam, beforePlayerAttack, beforePlayerHp, beforeEnemyAttack, beforeEnemyHp);
 
                 for (int k = 0; k < 5; k++)
                 {
@@ -1552,13 +2435,19 @@ int Game::battlePhase()
             }
             else
             {
+                captureTeamStats(tempPlayerTeam, beforePlayerAttack, beforePlayerHp);
+                captureTeamStats(tempEnemyTeam, beforeEnemyAttack, beforeEnemyHp);
                 enemyFront->onHurt(tempEnemyTeam, enemyFrontIndex, 5, tempPlayerTeam, 5);
+                flashStatChanges(tempPlayerTeam, tempEnemyTeam, beforePlayerAttack, beforePlayerHp, beforeEnemyAttack, beforeEnemyHp);
             }
         }
 
         if (enemyFront->getHp() <= 0 && playerFront->getHp() > 0)
         {
+            captureTeamStats(tempPlayerTeam, beforePlayerAttack, beforePlayerHp);
+            captureTeamStats(tempEnemyTeam, beforeEnemyAttack, beforeEnemyHp);
             playerFront->onKnockOut(enemyFront);
+            flashStatChanges(tempPlayerTeam, tempEnemyTeam, beforePlayerAttack, beforePlayerHp, beforeEnemyAttack, beforeEnemyHp);
 
             if (playerFront->getName() == "Hippo")
             {
@@ -1568,7 +2457,10 @@ int Game::battlePhase()
 
         if (playerFront->getHp() <= 0 && enemyFront->getHp() > 0)
         {
+            captureTeamStats(tempPlayerTeam, beforePlayerAttack, beforePlayerHp);
+            captureTeamStats(tempEnemyTeam, beforeEnemyAttack, beforeEnemyHp);
             enemyFront->onKnockOut(playerFront);
+            flashStatChanges(tempPlayerTeam, tempEnemyTeam, beforePlayerAttack, beforePlayerHp, beforeEnemyAttack, beforeEnemyHp);
 
             if (enemyFront->getName() == "Hippo")
             {
@@ -1581,6 +2473,7 @@ int Game::battlePhase()
         roundNumber++;
     }
 
+    clearStatFlash();
     clearTempTeam(tempPlayerTeam);
     clearTempTeam(tempEnemyTeam);
 
@@ -1596,19 +2489,26 @@ void Game::shopPhase()
     std::string commandLine;
     std::string cleanCommand;
 
-    player->resetGold();
-
-    for (int i = 0; i < 5; i++)
+    if (resumeShopWithoutSetup)
     {
-        Pet *pet = player->getTeamPet(i);
+        resumeShopWithoutSetup = false;
+    }
+    else
+    {
+        player->resetGold();
 
-        if (pet != nullptr)
+        for (int i = 0; i < 5; i++)
         {
-            pet->onShopStart(player);
+            Pet *pet = player->getTeamPet(i);
 
-            if (pet->getName() == "Swan")
+            if (pet != nullptr)
             {
-                addLog("Swan shop start skill triggered.", true);
+                pet->onShopStart(player);
+
+                if (pet->getName() == "Swan")
+                {
+                    addLog("Swan shop start skill triggered.", true);
+                }
             }
         }
     }
@@ -1639,6 +2539,26 @@ void Game::shopPhase()
         if (cleanCommand.size() == 0)
         {
             addLog("Invalid command format!", true);
+            continue;
+        }
+
+        if (cleanCommand == "saveq")
+        {
+            if (saveGameToFile("cli_auto_pets_save.txt"))
+            {
+                saveAndQuitRequested = true;
+                std::cout << std::endl;
+                std::cout << "Game saved to cli_auto_pets_save.txt. Goodbye!" << std::endl;
+                return;
+            }
+
+            addLog("Save failed. Check file permissions and try again.", true);
+            continue;
+        }
+
+        if (cleanCommand.size() >= 4 && cleanCommand.substr(0, 4) == "view")
+        {
+            showPetInfo(cleanCommand.substr(4));
             continue;
         }
 
@@ -1696,6 +2616,7 @@ void Game::shopPhase()
             else if (player->buyPet(shopPets[shopIndex], targetSlot))
             {
                 shopPets[shopIndex] = nullptr;
+                flashGoldChange();
                 addLog("Bought or merged the shop pet.", true);
             }
             else
@@ -1858,7 +2779,7 @@ void Game::shopPhase()
 // What the outputs are: Runs shop, enemy generation, battle result, and final game over output.
 void Game::start()
 {
-    if (!selectDifficulty())
+    if (!showTitleMenu())
     {
         return;
     }
@@ -1866,6 +2787,11 @@ void Game::start()
     while (player->getHp() > 0 && wins < 10)
     {
         shopPhase();
+
+        if (saveAndQuitRequested)
+        {
+            return;
+        }
 
         if (!std::cin)
         {

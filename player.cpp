@@ -40,6 +40,51 @@ void Player::addGold(int amount)
     gold = gold + amount;
 }
 
+// What it does: Sets the player's health points for a loaded save.
+// What the inputs are: The health point value to restore.
+// What the outputs are: Updates player health without going below zero.
+void Player::setHp(int playerHp)
+{
+    hp = playerHp;
+
+    if (hp < 0)
+    {
+        hp = 0;
+    }
+}
+
+// What it does: Sets the player's gold for a loaded save.
+// What the inputs are: The gold value to restore.
+// What the outputs are: Updates player gold without going below zero.
+void Player::setGold(int playerGold)
+{
+    gold = playerGold;
+
+    if (gold < 0)
+    {
+        gold = 0;
+    }
+}
+
+// What it does: Replaces one team slot with a loaded pet.
+// What the inputs are: The slot index and the pet pointer to own.
+// What the outputs are: Deletes the old slot pet and stores the new pointer.
+void Player::setTeamPet(int slotIndex, Pet *pet)
+{
+    if (slotIndex < 0 || slotIndex >= 5)
+    {
+        delete pet;
+        return;
+    }
+
+    if (team[slotIndex] != nullptr)
+    {
+        delete team[slotIndex];
+    }
+
+    team[slotIndex] = pet;
+}
+
 // What it does: Resets the player gold to the normal shop phase amount.
 // What the inputs are: None.
 // What the outputs are: Sets the player's gold to ten.
