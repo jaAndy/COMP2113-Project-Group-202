@@ -9,17 +9,20 @@
 // What it does: Creates the game state and the first shop.
 // What the inputs are: None.
 // What the outputs are: Initializes player, shop pets, turn, wins, and message log.
-Game::Game() {
+Game::Game()
+{
     player = new Player();
     currentTurn = 1;
     wins = 0;
     difficultyMode = NORMAL_MODE;
 
-    for (int i = 0; i < 3; i++) {
+    for (int i = 0; i < 3; i++)
+    {
         shopPets[i] = nullptr;
     }
 
-    for (int i = 0; i < 5; i++) {
+    for (int i = 0; i < 5; i++)
+    {
         enemyTeam[i] = nullptr;
     }
 
@@ -30,7 +33,8 @@ Game::Game() {
 // What it does: Destroys the game and frees owned dynamic memory.
 // What the inputs are: None.
 // What the outputs are: Deletes the player and all remaining shop pet pointers.
-Game::~Game() {
+Game::~Game()
+{
     delete player;
     player = nullptr;
 
@@ -110,14 +114,17 @@ std::string Game::getDifficultyName() const {
 // What it does: Adds a message to the game message log.
 // What the inputs are: The message text, delay flag, and optional active battle teams.
 // What the outputs are: Updates the message log and may redraw the UI with a short delay.
-void Game::addLog(std::string msg, bool autoDelay, Pet** activePlayerTeam, Pet** activeEnemyTeam) {
+void Game::addLog(std::string msg, bool autoDelay, Pet **activePlayerTeam, Pet **activeEnemyTeam)
+{
     messageLog.push_back(msg);
 
-    if (messageLog.size() > 5) {
+    if (messageLog.size() > 5)
+    {
         messageLog.erase(messageLog.begin());
     }
 
-    if (autoDelay) {
+    if (autoDelay)
+    {
         drawUI(activePlayerTeam, activeEnemyTeam);
         std::this_thread::sleep_for(std::chrono::milliseconds(800));
     }
@@ -126,29 +133,34 @@ void Game::addLog(std::string msg, bool autoDelay, Pet** activePlayerTeam, Pet**
 // What it does: Prints one fixed-width box cell with manual spacing.
 // What the inputs are: The cell text and the inside cell width.
 // What the outputs are: Prints one aligned cell content line.
-void Game::printBoxCell(std::string text, int width) {
+void Game::printBoxCell(std::string text, int width)
+{
     int visualLength = static_cast<int>(text.size());
     std::string::size_type dotPosition;
 
-    if (text.find("♥") != std::string::npos) {
+    if (text.find("♥") != std::string::npos)
+    {
         visualLength = visualLength - 2;
     }
 
     dotPosition = text.find("●");
-    while (dotPosition != std::string::npos) {
+    while (dotPosition != std::string::npos)
+    {
         visualLength = visualLength - 2;
         dotPosition = text.find("●", dotPosition + 1);
     }
 
     dotPosition = text.find("○");
-    while (dotPosition != std::string::npos) {
+    while (dotPosition != std::string::npos)
+    {
         visualLength = visualLength - 2;
         dotPosition = text.find("○", dotPosition + 1);
     }
 
     std::cout << "|" << text;
 
-    for (int i = visualLength; i < width; i++) {
+    for (int i = visualLength; i < width; i++)
+    {
         std::cout << " ";
     }
 
@@ -158,36 +170,52 @@ void Game::printBoxCell(std::string text, int width) {
 // What it does: Builds the pet name and experience display line.
 // What the inputs are: The pet pointer to display.
 // What the outputs are: Returns a short name line with level and experience bar.
-std::string Game::getPetNameLine(Pet* pet) {
+std::string Game::getPetNameLine(Pet *pet)
+{
     std::string petName;
     std::string expBar;
     std::string nameLine;
 
-    if (pet == nullptr) {
+    if (pet == nullptr)
+    {
         return "[   Empty   ]";
     }
 
     petName = pet->getName();
 
-    if (pet->getLevel() == 1) {
-        if (pet->getExperience() == 0) {
+    if (pet->getLevel() == 1)
+    {
+        if (pet->getExperience() == 0)
+        {
             expBar = "[○○]";
-        } else {
+        }
+        else
+        {
             expBar = "[●○]";
         }
-    } else if (pet->getLevel() == 2) {
-        if (pet->getExperience() == 0) {
+    }
+    else if (pet->getLevel() == 2)
+    {
+        if (pet->getExperience() == 0)
+        {
             expBar = "[○○○]";
-        } else if (pet->getExperience() == 1) {
+        }
+        else if (pet->getExperience() == 1)
+        {
             expBar = "[●○○]";
-        } else {
+        }
+        else
+        {
             expBar = "[●●○]";
         }
-    } else {
+    }
+    else
+    {
         expBar = "[MAX]";
     }
 
-    while (petName.size() > 3 && ("Lv" + std::to_string(pet->getLevel()) + " " + petName + " " + expBar).size() > 23) {
+    while (petName.size() > 3 && ("Lv" + std::to_string(pet->getLevel()) + " " + petName + " " + expBar).size() > 23)
+    {
         petName.erase(petName.size() - 1);
     }
 
@@ -195,10 +223,63 @@ std::string Game::getPetNameLine(Pet* pet) {
     return nameLine;
 }
 
+// What it does: Wraps a pet name with player or enemy color.
+// What the inputs are: The pet name text and whether the pet belongs to the player.
+// What the outputs are: Returns a colored pet name string.
+std::string Game::colorPetName(const std::string &petName, bool isPlayerPet)
+{
+    if (isPlayerPet)
+    {
+        return std::string(BLUE) + petName + RESET;
+    }
+
+    return std::string(RED) + petName + RESET;
+}
+
+// What it does: Wraps a faction label with its team color.
+// What the inputs are: Whether the faction is the player side.
+// What the outputs are: Returns colored text "Player" or "Enemy".
+std::string Game::colorFactionLabel(bool isPlayerTeam)
+{
+    if (isPlayerTeam)
+    {
+        return std::string(BLUE) + "Player" + RESET;
+    }
+
+    return std::string(RED) + "Enemy" + RESET;
+}
+
+// What it does: Formats one battle log line with a unified tag template.
+// What the inputs are: The round number, event tag, and detail text.
+// What the outputs are: Returns a formatted battle log string.
+std::string Game::formatBattleLog(int roundNumber, const std::string &tag, const std::string &detail)
+{
+    if (roundNumber > 0)
+    {
+        return "[R" + std::to_string(roundNumber) + "][" + tag + "] " + detail;
+    }
+
+    return "[START][" + tag + "] " + detail;
+}
+
 // What it does: Draws the full shop phase user interface.
 // What the inputs are: Optional active player and enemy teams to display.
 // What the outputs are: Prints the game stats, team, shop, menu, log, and input prompt.
-void Game::drawUI(Pet** activePlayerTeam, Pet** activeEnemyTeam) {
+void Game::drawUI(Pet **activePlayerTeam, Pet **activeEnemyTeam)
+{
+    int playerFrontIndex = -1;
+    int enemyFrontIndex = -1;
+
+    if (activePlayerTeam != nullptr)
+    {
+        playerFrontIndex = findFrontIndex(activePlayerTeam);
+    }
+
+    if (activeEnemyTeam != nullptr)
+    {
+        enemyFrontIndex = findFrontIndex(activeEnemyTeam);
+    }
+
     std::cout << "\033[2J\033[1;1H";
 
     std::cout << CYAN << "================================================================================" << RESET << std::endl;
@@ -211,20 +292,29 @@ void Game::drawUI(Pet** activePlayerTeam, Pet** activeEnemyTeam) {
     std::cout << std::endl;
 
     std::cout << GREEN << "TEAM SLOTS" << RESET << std::endl;
-    for (int i = 0; i < 5; i++) {
+    for (int i = 0; i < 5; i++)
+    {
         std::cout << "+-----------------+";
     }
     std::cout << std::endl;
-    for (int i = 0; i < 5; i++) {
+    for (int i = 0; i < 5; i++)
+    {
         std::string slotLine = "Slot " + std::to_string(i + 1);
+
+        if (activePlayerTeam != nullptr && i == playerFrontIndex)
+        {
+            slotLine = "Slot " + std::to_string(i + 1) + " FRONT";
+        }
         printBoxCell(slotLine, 17);
     }
     std::cout << std::endl;
-    for (int i = 0; i < 5; i++) {
-        Pet* pet = player->getTeamPet(i);
+    for (int i = 0; i < 5; i++)
+    {
+        Pet *pet = player->getTeamPet(i);
         std::string nameLine;
 
-        if (activePlayerTeam != nullptr) {
+        if (activePlayerTeam != nullptr)
+        {
             pet = activePlayerTeam[i];
         }
 
@@ -233,15 +323,18 @@ void Game::drawUI(Pet** activePlayerTeam, Pet** activeEnemyTeam) {
         printBoxCell(nameLine, 17);
     }
     std::cout << std::endl;
-    for (int i = 0; i < 5; i++) {
-        Pet* pet = player->getTeamPet(i);
+    for (int i = 0; i < 5; i++)
+    {
+        Pet *pet = player->getTeamPet(i);
         std::string statsLine = "";
 
-        if (activePlayerTeam != nullptr) {
+        if (activePlayerTeam != nullptr)
+        {
             pet = activePlayerTeam[i];
         }
 
-        if (pet != nullptr) {
+        if (pet != nullptr)
+        {
             statsLine = "ATK:" + std::to_string(pet->getAttack());
             statsLine = statsLine + " HP:♥" + std::to_string(pet->getHp());
         }
@@ -249,52 +342,70 @@ void Game::drawUI(Pet** activePlayerTeam, Pet** activeEnemyTeam) {
         printBoxCell(statsLine, 17);
     }
     std::cout << std::endl;
-    for (int i = 0; i < 5; i++) {
+    for (int i = 0; i < 5; i++)
+    {
         std::cout << "+-----------------+";
     }
     std::cout << std::endl;
     std::cout << CYAN << "--------------------------------------------------------------------------------" << RESET << std::endl;
     std::cout << std::endl;
 
-    if (activeEnemyTeam == nullptr) {
+    if (activeEnemyTeam == nullptr)
+    {
         std::cout << GREEN << "SHOP SLOTS" << RESET << std::endl;
-    } else {
+    }
+    else
+    {
         std::cout << GREEN << "ENEMY TEAM" << RESET << std::endl;
     }
-    for (int i = 0; i < 5; i++) {
-        if (activeEnemyTeam == nullptr && i >= 3) {
+    for (int i = 0; i < 5; i++)
+    {
+        if (activeEnemyTeam == nullptr && i >= 3)
+        {
             break;
         }
 
         std::cout << "+-----------------+";
     }
     std::cout << std::endl;
-    for (int i = 0; i < 5; i++) {
+    for (int i = 0; i < 5; i++)
+    {
         std::string shopLine = "Enemy " + std::to_string(i + 1);
 
-        if (activeEnemyTeam == nullptr && i >= 3) {
+        if (activeEnemyTeam == nullptr && i >= 3)
+        {
             break;
         }
 
-        if (activeEnemyTeam == nullptr) {
+        if (activeEnemyTeam == nullptr)
+        {
             shopLine = "Shop ";
             shopLine = shopLine + static_cast<char>('A' + i);
+        }
+        else if (i == enemyFrontIndex)
+        {
+            shopLine = "Enemy " + std::to_string(i + 1) + " FRONT";
         }
 
         printBoxCell(shopLine, 17);
     }
     std::cout << std::endl;
-    for (int i = 0; i < 5; i++) {
-        Pet* pet = nullptr;
+    for (int i = 0; i < 5; i++)
+    {
+        Pet *pet = nullptr;
         std::string nameLine;
 
-        if (activeEnemyTeam == nullptr && i >= 3) {
+        if (activeEnemyTeam == nullptr && i >= 3)
+        {
             break;
         }
 
-        if (activeEnemyTeam == nullptr) {
+        if (activeEnemyTeam == nullptr)
+        {
             pet = shopPets[i];
-        } else {
+        }
+        else
+        {
             pet = activeEnemyTeam[i];
         }
 
@@ -303,21 +414,27 @@ void Game::drawUI(Pet** activePlayerTeam, Pet** activeEnemyTeam) {
         printBoxCell(nameLine, 17);
     }
     std::cout << std::endl;
-    for (int i = 0; i < 5; i++) {
-        Pet* pet = nullptr;
+    for (int i = 0; i < 5; i++)
+    {
+        Pet *pet = nullptr;
         std::string statsLine = "";
 
-        if (activeEnemyTeam == nullptr && i >= 3) {
+        if (activeEnemyTeam == nullptr && i >= 3)
+        {
             break;
         }
 
-        if (activeEnemyTeam == nullptr) {
+        if (activeEnemyTeam == nullptr)
+        {
             pet = shopPets[i];
-        } else {
+        }
+        else
+        {
             pet = activeEnemyTeam[i];
         }
 
-        if (pet != nullptr) {
+        if (pet != nullptr)
+        {
             statsLine = "ATK:" + std::to_string(pet->getAttack());
             statsLine = statsLine + " HP:♥" + std::to_string(pet->getHp());
         }
@@ -325,8 +442,10 @@ void Game::drawUI(Pet** activePlayerTeam, Pet** activeEnemyTeam) {
         printBoxCell(statsLine, 17);
     }
     std::cout << std::endl;
-    for (int i = 0; i < 5; i++) {
-        if (activeEnemyTeam == nullptr && i >= 3) {
+    for (int i = 0; i < 5; i++)
+    {
+        if (activeEnemyTeam == nullptr && i >= 3)
+        {
             break;
         }
 
@@ -337,7 +456,8 @@ void Game::drawUI(Pet** activePlayerTeam, Pet** activeEnemyTeam) {
     std::cout << std::endl;
 
     std::cout << "--- MESSAGE LOG ---" << std::endl;
-    for (int i = 0; i < static_cast<int>(messageLog.size()); i++) {
+    for (int i = 0; i < static_cast<int>(messageLog.size()); i++)
+    {
         std::cout << messageLog[i] << std::endl;
     }
     std::cout << "-------------------------------------------------" << std::endl;
@@ -355,32 +475,51 @@ void Game::drawUI(Pet** activePlayerTeam, Pet** activeEnemyTeam) {
 // What it does: Creates a random new pet up to a chosen tier.
 // What the inputs are: The highest allowed pet tier.
 // What the outputs are: Returns a newly allocated pet pointer.
-Pet* Game::createRandomPetByTier(int maxTier) {
+Pet *Game::createRandomPetByTier(int maxTier)
+{
     int choiceCount = 3;
 
-    if (maxTier == 2) {
+    if (maxTier == 2)
+    {
         choiceCount = 6;
-    } else if (maxTier >= 3) {
+    }
+    else if (maxTier >= 3)
+    {
         choiceCount = 9;
     }
 
     int choice = std::rand() % choiceCount;
 
-    if (choice == 0) {
+    if (choice == 0)
+    {
         return new Swan();
-    } else if (choice == 1) {
+    }
+    else if (choice == 1)
+    {
         return new Ant();
-    } else if (choice == 2) {
+    }
+    else if (choice == 2)
+    {
         return new Mosquito();
-    } else if (choice == 3) {
+    }
+    else if (choice == 3)
+    {
         return new Camel();
-    } else if (choice == 4) {
+    }
+    else if (choice == 4)
+    {
         return new Skunk();
-    } else if (choice == 5) {
+    }
+    else if (choice == 5)
+    {
         return new Elephant();
-    } else if (choice == 6) {
+    }
+    else if (choice == 6)
+    {
         return new Hippo();
-    } else if (choice == 7) {
+    }
+    else if (choice == 7)
+    {
         return new Blowfish();
     }
 
@@ -390,9 +529,12 @@ Pet* Game::createRandomPetByTier(int maxTier) {
 // What it does: Deletes all shop pets and clears the shop slots.
 // What the inputs are: None.
 // What the outputs are: Frees shop pet pointers and sets shop slots to nullptr.
-void Game::clearShop() {
-    for (int i = 0; i < 3; i++) {
-        if (shopPets[i] != nullptr) {
+void Game::clearShop()
+{
+    for (int i = 0; i < 3; i++)
+    {
+        if (shopPets[i] != nullptr)
+        {
             delete shopPets[i];
             shopPets[i] = nullptr;
         }
@@ -402,9 +544,12 @@ void Game::clearShop() {
 // What it does: Deletes all enemy pets and clears the enemy team slots.
 // What the inputs are: None.
 // What the outputs are: Frees enemy pet pointers and sets enemy slots to nullptr.
-void Game::clearEnemyTeam() {
-    for (int i = 0; i < 5; i++) {
-        if (enemyTeam[i] != nullptr) {
+void Game::clearEnemyTeam()
+{
+    for (int i = 0; i < 5; i++)
+    {
+        if (enemyTeam[i] != nullptr)
+        {
             delete enemyTeam[i];
             enemyTeam[i] = nullptr;
         }
@@ -414,11 +559,14 @@ void Game::clearEnemyTeam() {
 // What it does: Copies the player's team into a temporary team.
 // What the inputs are: The target temporary team array.
 // What the outputs are: Creates cloned pet pointers in the target team.
-void Game::clonePlayerTeam(Pet* targetTeam[5]) {
-    for (int i = 0; i < 5; i++) {
+void Game::clonePlayerTeam(Pet *targetTeam[5])
+{
+    for (int i = 0; i < 5; i++)
+    {
         targetTeam[i] = nullptr;
 
-        if (player->getTeamPet(i) != nullptr) {
+        if (player->getTeamPet(i) != nullptr)
+        {
             targetTeam[i] = player->getTeamPet(i)->clone();
         }
     }
@@ -427,11 +575,14 @@ void Game::clonePlayerTeam(Pet* targetTeam[5]) {
 // What it does: Copies the enemy team into a temporary team.
 // What the inputs are: The target temporary team array.
 // What the outputs are: Creates cloned enemy pet pointers in the target team.
-void Game::cloneEnemyTeam(Pet* targetTeam[5]) {
-    for (int i = 0; i < 5; i++) {
+void Game::cloneEnemyTeam(Pet *targetTeam[5])
+{
+    for (int i = 0; i < 5; i++)
+    {
         targetTeam[i] = nullptr;
 
-        if (enemyTeam[i] != nullptr) {
+        if (enemyTeam[i] != nullptr)
+        {
             targetTeam[i] = enemyTeam[i]->clone();
         }
     }
@@ -440,9 +591,12 @@ void Game::cloneEnemyTeam(Pet* targetTeam[5]) {
 // What it does: Deletes all pets in a temporary team.
 // What the inputs are: The temporary team array to clear.
 // What the outputs are: Frees all pet pointers and sets slots to nullptr.
-void Game::clearTempTeam(Pet* team[5]) {
-    for (int i = 0; i < 5; i++) {
-        if (team[i] != nullptr) {
+void Game::clearTempTeam(Pet *team[5])
+{
+    for (int i = 0; i < 5; i++)
+    {
+        if (team[i] != nullptr)
+        {
             delete team[i];
             team[i] = nullptr;
         }
@@ -452,9 +606,12 @@ void Game::clearTempTeam(Pet* team[5]) {
 // What it does: Finds the right-most living pet in a team.
 // What the inputs are: The team pointer array.
 // What the outputs are: Returns the front pet index or -1 if no pet exists.
-int Game::findFrontIndex(Pet* team[5]) {
-    for (int i = 4; i >= 0; i--) {
-        if (team[i] != nullptr && team[i]->isAlive()) {
+int Game::findFrontIndex(Pet *team[5])
+{
+    for (int i = 4; i >= 0; i--)
+    {
+        if (team[i] != nullptr && team[i]->isAlive())
+        {
             return i;
         }
     }
@@ -465,22 +622,27 @@ int Game::findFrontIndex(Pet* team[5]) {
 // What it does: Moves all remaining pets toward the right side.
 // What the inputs are: The team pointer array to shift.
 // What the outputs are: Keeps pet order while filling slots toward index four.
-void Game::shiftTeamRight(Pet* team[5]) {
-    Pet* shiftedTeam[5];
+void Game::shiftTeamRight(Pet *team[5])
+{
+    Pet *shiftedTeam[5];
     int writeIndex = 4;
 
-    for (int i = 0; i < 5; i++) {
+    for (int i = 0; i < 5; i++)
+    {
         shiftedTeam[i] = nullptr;
     }
 
-    for (int i = 4; i >= 0; i--) {
-        if (team[i] != nullptr) {
+    for (int i = 4; i >= 0; i--)
+    {
+        if (team[i] != nullptr)
+        {
             shiftedTeam[writeIndex] = team[i];
             writeIndex--;
         }
     }
 
-    for (int i = 0; i < 5; i++) {
+    for (int i = 0; i < 5; i++)
+    {
         team[i] = shiftedTeam[i];
     }
 }
@@ -488,56 +650,118 @@ void Game::shiftTeamRight(Pet* team[5]) {
 // What it does: Checks whether a team has any living pet.
 // What the inputs are: The team pointer array.
 // What the outputs are: Returns true if at least one living pet exists.
-bool Game::hasAnyPet(Pet* team[5]) {
+bool Game::hasAnyPet(Pet *team[5])
+{
     return findFrontIndex(team) != -1;
 }
 
 // What it does: Removes all fainted pets from a temporary team.
-// What the inputs are: The team to clean and the active teams for battle display.
-// What the outputs are: Triggers faint skills, deletes fainted pets, and shifts the team right.
-void Game::removeFaintedPets(Pet* team[5], Pet** activePlayerTeam, Pet** activeEnemyTeam) {
+// What the inputs are: The team to clean, active teams, team label, ownership flag, and round number.
+// What the outputs are: Triggers faint skills, logs clear battle events, deletes fainted pets, and shifts right.
+void Game::removeFaintedPets(Pet *team[5], Pet **activePlayerTeam, Pet **activeEnemyTeam, const std::string &teamLabel, bool isPlayerTeam, int roundNumber)
+{
     bool removedPet = false;
+    std::string factionLabel = teamLabel;
 
-    for (int i = 0; i < 5; i++) {
-        if (team[i] != nullptr && team[i]->getHp() <= 0) {
+    if (teamLabel == "Player")
+    {
+        factionLabel = colorFactionLabel(true);
+    }
+    else if (teamLabel == "Enemy")
+    {
+        factionLabel = colorFactionLabel(false);
+    }
+
+    for (int i = 0; i < 5; i++)
+    {
+        if (team[i] != nullptr && team[i]->getHp() <= 0)
+        {
             std::string faintedName = team[i]->getName();
-            team[i]->onFaint(team, 5);
+            int faintedLevel = team[i]->getLevel();
+            int allyAtkBefore[5];
+            int allyHpBefore[5];
+            int buffTargetIndex = -1;
 
-            if (faintedName == "Ant") {
-                addLog(faintedName + " faint skill triggered.", true, activePlayerTeam, activeEnemyTeam);
+            for (int j = 0; j < 5; j++)
+            {
+                allyAtkBefore[j] = -1;
+                allyHpBefore[j] = -1;
+
+                if (team[j] != nullptr && team[j] != team[i] && team[j]->isAlive())
+                {
+                    allyAtkBefore[j] = team[j]->getAttack();
+                    allyHpBefore[j] = team[j]->getHp();
+                }
             }
 
+            team[i]->onFaint(team, 5);
+
+            if (faintedName == "Ant")
+            {
+                for (int j = 0; j < 5; j++)
+                {
+                    if (allyAtkBefore[j] >= 0 && team[j] != nullptr && team[j]->isAlive())
+                    {
+                        if (team[j]->getAttack() > allyAtkBefore[j] || team[j]->getHp() > allyHpBefore[j])
+                        {
+                            buffTargetIndex = j;
+                            break;
+                        }
+                    }
+                }
+
+                if (buffTargetIndex >= 0)
+                {
+                    std::string sourceName = colorPetName(faintedName, isPlayerTeam);
+                    std::string targetName = colorPetName(team[buffTargetIndex]->getName(), isPlayerTeam);
+                    addLog(formatBattleLog(roundNumber, "SKILL", sourceName + " faint -> " + targetName + " +" + std::to_string(faintedLevel) + "/+" + std::to_string(faintedLevel) + "."), true, activePlayerTeam, activeEnemyTeam);
+                }
+                else
+                {
+                    std::string sourceName = colorPetName(faintedName, isPlayerTeam);
+                    addLog(formatBattleLog(roundNumber, "SKILL", sourceName + " faint -> no valid ally target."), true, activePlayerTeam, activeEnemyTeam);
+                }
+            }
+
+            std::string faintedColored = colorPetName(faintedName, isPlayerTeam);
             delete team[i];
             team[i] = nullptr;
-            addLog(faintedName + " fainted.", true, activePlayerTeam, activeEnemyTeam);
+            addLog(formatBattleLog(roundNumber, "FAINT", factionLabel + " " + faintedColored + " faints."), true, activePlayerTeam, activeEnemyTeam);
             removedPet = true;
         }
     }
 
-    if (removedPet) {
+    if (removedPet)
+    {
         shiftTeamRight(team);
-        drawUI(activePlayerTeam, activeEnemyTeam);
-        std::this_thread::sleep_for(std::chrono::milliseconds(800));
+        addLog(formatBattleLog(roundNumber, "SHIFT", factionLabel + " team shifts right."), true, activePlayerTeam, activeEnemyTeam);
     }
 }
 
 // What it does: Replaces the whole shop with three turn-limited random pets.
 // What the inputs are: None.
 // What the outputs are: Deletes old shop pets and creates three new shop pets for the current turn.
-void Game::rollShop() {
+void Game::rollShop()
+{
     int maxTier = 1;
 
     clearShop();
 
-    if (currentTurn <= 2) {
+    if (currentTurn <= 2)
+    {
         maxTier = 1;
-    } else if (currentTurn <= 4) {
+    }
+    else if (currentTurn <= 4)
+    {
         maxTier = 2;
-    } else {
+    }
+    else
+    {
         maxTier = 3;
     }
 
-    for (int i = 0; i < 3; i++) {
+    for (int i = 0; i < 3; i++)
+    {
         shopPets[i] = createRandomPetByTier(maxTier);
     }
 }
@@ -545,16 +769,20 @@ void Game::rollShop() {
 // What it does: Converts a shop slot letter into an array index.
 // What the inputs are: The shop slot letter.
 // What the outputs are: Returns 0, 1, or 2 for valid letters, otherwise -1.
-int Game::getShopIndex(char shopLetter) {
-    if (shopLetter == 'A' || shopLetter == 'a') {
+int Game::getShopIndex(char shopLetter)
+{
+    if (shopLetter == 'A' || shopLetter == 'a')
+    {
         return 0;
     }
 
-    if (shopLetter == 'B' || shopLetter == 'b') {
+    if (shopLetter == 'B' || shopLetter == 'b')
+    {
         return 1;
     }
 
-    if (shopLetter == 'C' || shopLetter == 'c') {
+    if (shopLetter == 'C' || shopLetter == 'c')
+    {
         return 2;
     }
 
@@ -564,17 +792,21 @@ int Game::getShopIndex(char shopLetter) {
 // What it does: Removes spaces and changes command text to lowercase.
 // What the inputs are: The raw input line from the player.
 // What the outputs are: Returns the cleaned command string.
-std::string Game::preprocessCommand(std::string inputLine) {
+std::string Game::preprocessCommand(std::string inputLine)
+{
     std::string command;
 
-    for (int i = 0; i < static_cast<int>(inputLine.size()); i++) {
+    for (int i = 0; i < static_cast<int>(inputLine.size()); i++)
+    {
         char currentChar = inputLine[i];
 
-        if (currentChar == ' ') {
+        if (currentChar == ' ')
+        {
             continue;
         }
 
-        if (currentChar >= 'A' && currentChar <= 'Z') {
+        if (currentChar >= 'A' && currentChar <= 'Z')
+        {
             currentChar = currentChar - 'A' + 'a';
         }
 
@@ -587,10 +819,12 @@ std::string Game::preprocessCommand(std::string inputLine) {
 // What it does: Applies turn-based level and stat scaling to an enemy pet.
 // What the inputs are: The enemy pet pointer and the current turn.
 // What the outputs are: Updates the enemy pet level and stats.
-void Game::applyEnemyScaling(Pet* pet, int turn) {
+void Game::applyEnemyScaling(Pet *pet, int turn)
+{
     applyNormalEnemyScaling(pet, turn);
 
-    if (difficultyMode == HARD_MODE) {
+    if (difficultyMode == HARD_MODE)
+    {
         applyHardEnemyScaling(pet, turn);
         boostHardEnemyStats(pet);
     }
@@ -599,80 +833,117 @@ void Game::applyEnemyScaling(Pet* pet, int turn) {
 // What it does: Applies Normal mode level and stat scaling to an enemy pet.
 // What the inputs are: The enemy pet pointer and the current turn.
 // What the outputs are: Updates the enemy pet level and stats for Normal mode.
-void Game::applyNormalEnemyScaling(Pet* pet, int turn) {
+void Game::applyNormalEnemyScaling(Pet *pet, int turn)
+{
     int attackBonus = 0;
     int hpBonus = 0;
     int levelRoll = std::rand() % 100;
 
-    if (pet == nullptr) {
+    if (pet == nullptr)
+    {
         return;
     }
 
-    if (turn == 1) {
+    if (turn == 1)
+    {
         attackBonus = 0;
         hpBonus = 0;
-    } else if (turn == 2) {
+    }
+    else if (turn == 2)
+    {
         attackBonus = std::rand() % 2;
         hpBonus = std::rand() % 2;
-    } else if (turn == 3) {
-        if (levelRoll < 10) {
+    }
+    else if (turn == 3)
+    {
+        if (levelRoll < 10)
+        {
             pet->setLevel(2);
         }
 
         attackBonus = std::rand() % 2;
         hpBonus = std::rand() % 2;
-    } else if (turn == 4) {
-        if (levelRoll < 30) {
+    }
+    else if (turn == 4)
+    {
+        if (levelRoll < 30)
+        {
             pet->setLevel(2);
         }
 
         attackBonus = 1 + (std::rand() % 2);
         hpBonus = 1 + (std::rand() % 2);
-    } else if (turn == 5) {
-        if (levelRoll < 50) {
+    }
+    else if (turn == 5)
+    {
+        if (levelRoll < 50)
+        {
             pet->setLevel(2);
         }
 
         attackBonus = 1 + (std::rand() % 3);
         hpBonus = 1 + (std::rand() % 3);
-    } else if (turn == 6) {
-        if (levelRoll < 75) {
+    }
+    else if (turn == 6)
+    {
+        if (levelRoll < 75)
+        {
             pet->setLevel(2);
         }
 
         attackBonus = 2 + (std::rand() % 3);
         hpBonus = 2 + (std::rand() % 3);
-    } else if (turn == 7) {
-        if (levelRoll < 10) {
+    }
+    else if (turn == 7)
+    {
+        if (levelRoll < 10)
+        {
             pet->setLevel(3);
-        } else {
+        }
+        else
+        {
             pet->setLevel(2);
         }
 
         attackBonus = 3 + (std::rand() % 3);
         hpBonus = 3 + (std::rand() % 3);
-    } else if (turn == 8) {
-        if (levelRoll < 30) {
+    }
+    else if (turn == 8)
+    {
+        if (levelRoll < 30)
+        {
             pet->setLevel(3);
-        } else {
+        }
+        else
+        {
             pet->setLevel(2);
         }
 
         attackBonus = 4 + (std::rand() % 3);
         hpBonus = 4 + (std::rand() % 3);
-    } else if (turn == 9) {
-        if (levelRoll < 50) {
+    }
+    else if (turn == 9)
+    {
+        if (levelRoll < 50)
+        {
             pet->setLevel(3);
-        } else {
+        }
+        else
+        {
             pet->setLevel(2);
         }
 
         attackBonus = 5 + (std::rand() % 3);
         hpBonus = 5 + (std::rand() % 3);
-    } else {
-        if (levelRoll < 80) {
+    }
+    else
+    {
+        if (levelRoll < 80)
+        {
             pet->setLevel(3);
-        } else {
+        }
+        else
+        {
             pet->setLevel(2);
         }
 
@@ -686,65 +957,111 @@ void Game::applyNormalEnemyScaling(Pet* pet, int turn) {
 // What it does: Applies Hard mode level scaling to an enemy pet.
 // What the inputs are: The enemy pet pointer and the current turn.
 // What the outputs are: Updates the enemy pet level for Hard mode.
-void Game::applyHardEnemyScaling(Pet* pet, int turn) {
+void Game::applyHardEnemyScaling(Pet *pet, int turn)
+{
     int levelRoll = std::rand() % 100;
 
-    if (pet == nullptr) {
+    if (pet == nullptr)
+    {
         return;
     }
 
-    if (turn == 1) {
+    if (turn == 1)
+    {
         pet->setLevel(1);
-    } else if (turn == 2) {
-        if (levelRoll < 10) {
+    }
+    else if (turn == 2)
+    {
+        if (levelRoll < 10)
+        {
             pet->setLevel(2);
-        } else {
+        }
+        else
+        {
             pet->setLevel(1);
         }
-    } else if (turn == 3) {
-        if (levelRoll < 20) {
+    }
+    else if (turn == 3)
+    {
+        if (levelRoll < 20)
+        {
             pet->setLevel(2);
-        } else {
+        }
+        else
+        {
             pet->setLevel(1);
         }
-    } else if (turn == 4) {
-        if (levelRoll < 40) {
+    }
+    else if (turn == 4)
+    {
+        if (levelRoll < 40)
+        {
             pet->setLevel(2);
-        } else {
+        }
+        else
+        {
             pet->setLevel(1);
         }
-    } else if (turn == 5) {
-        if (levelRoll < 60) {
+    }
+    else if (turn == 5)
+    {
+        if (levelRoll < 60)
+        {
             pet->setLevel(2);
         }
-    } else if (turn == 6) {
-        if (levelRoll < 10) {
+    }
+    else if (turn == 6)
+    {
+        if (levelRoll < 10)
+        {
             pet->setLevel(3);
-        } else {
+        }
+        else
+        {
             pet->setLevel(2);
         }
-    } else if (turn == 7) {
-        if (levelRoll < 20) {
+    }
+    else if (turn == 7)
+    {
+        if (levelRoll < 20)
+        {
             pet->setLevel(3);
-        } else {
+        }
+        else
+        {
             pet->setLevel(2);
         }
-    } else if (turn == 8) {
-        if (levelRoll < 40) {
+    }
+    else if (turn == 8)
+    {
+        if (levelRoll < 40)
+        {
             pet->setLevel(3);
-        } else {
+        }
+        else
+        {
             pet->setLevel(2);
         }
-    } else if (turn == 9) {
-        if (levelRoll < 60) {
+    }
+    else if (turn == 9)
+    {
+        if (levelRoll < 60)
+        {
             pet->setLevel(3);
-        } else {
+        }
+        else
+        {
             pet->setLevel(2);
         }
-    } else {
-        if (levelRoll < 90) {
+    }
+    else
+    {
+        if (levelRoll < 90)
+        {
             pet->setLevel(3);
-        } else {
+        }
+        else
+        {
             pet->setLevel(2);
         }
     }
@@ -753,11 +1070,13 @@ void Game::applyHardEnemyScaling(Pet* pet, int turn) {
 // What it does: Raises Hard mode enemy stats using integer scaling.
 // What the inputs are: The enemy pet pointer.
 // What the outputs are: Updates attack and health with a stronger Hard mode value.
-void Game::boostHardEnemyStats(Pet* pet) {
+void Game::boostHardEnemyStats(Pet *pet)
+{
     int boostedAttack = 0;
     int boostedHp = 0;
 
-    if (pet == nullptr) {
+    if (pet == nullptr)
+    {
         return;
     }
 
@@ -770,24 +1089,31 @@ void Game::boostHardEnemyStats(Pet* pet) {
 // What it does: Creates a scaled enemy team for the current turn.
 // What the inputs are: The current turn number.
 // What the outputs are: Deletes the old enemy team and fills new enemy slots.
-void Game::generateEnemyTeam(int turn) {
+void Game::generateEnemyTeam(int turn)
+{
     int enemyCount = 3;
     int maxTier = 1;
 
     clearEnemyTeam();
 
-    if (turn <= 2) {
+    if (turn <= 2)
+    {
         enemyCount = 3;
         maxTier = 1;
-    } else if (turn <= 4) {
+    }
+    else if (turn <= 4)
+    {
         enemyCount = 4;
         maxTier = 2;
-    } else {
+    }
+    else
+    {
         enemyCount = 5;
         maxTier = 3;
     }
 
-    for (int i = 0; i < enemyCount; i++) {
+    for (int i = 0; i < enemyCount; i++)
+    {
         int targetIndex = 5 - enemyCount + i;
         enemyTeam[targetIndex] = createRandomPetByTier(maxTier);
         applyEnemyScaling(enemyTeam[targetIndex], turn);
@@ -797,97 +1123,274 @@ void Game::generateEnemyTeam(int turn) {
 // What it does: Runs the real auto battle using cloned temporary teams.
 // What the inputs are: None.
 // What the outputs are: Returns 1 for win, 0 for draw, and -1 for loss.
-int Game::battlePhase() {
-    Pet* tempPlayerTeam[5];
-    Pet* tempEnemyTeam[5];
+int Game::battlePhase()
+{
+    Pet *tempPlayerTeam[5];
+    Pet *tempEnemyTeam[5];
     int battleResult = 0;
+    int roundNumber = 1;
 
-    for (int i = 0; i < 5; i++) {
+    for (int i = 0; i < 5; i++)
+    {
         tempPlayerTeam[i] = nullptr;
         tempEnemyTeam[i] = nullptr;
     }
 
     clonePlayerTeam(tempPlayerTeam);
     cloneEnemyTeam(tempEnemyTeam);
+    shiftTeamRight(tempPlayerTeam);
+    shiftTeamRight(tempEnemyTeam);
 
-    for (int i = 0; i < 5; i++) {
-        if (tempPlayerTeam[i] != nullptr) {
+    for (int i = 0; i < 5; i++)
+    {
+        if (tempPlayerTeam[i] != nullptr)
+        {
             tempPlayerTeam[i]->resetBattleState();
         }
 
-        if (tempEnemyTeam[i] != nullptr) {
+        if (tempEnemyTeam[i] != nullptr)
+        {
             tempEnemyTeam[i]->resetBattleState();
         }
     }
 
-    addLog("Battle started.", true, tempPlayerTeam, tempEnemyTeam);
+    addLog(formatBattleLog(0, "PHASE", "Battle started. Frontline is on the right side."), true, tempPlayerTeam, tempEnemyTeam);
 
-    for (int i = 0; i < 5; i++) {
-        if (tempPlayerTeam[i] != nullptr && tempPlayerTeam[i]->isAlive()) {
+    for (int i = 0; i < 5; i++)
+    {
+        if (tempPlayerTeam[i] != nullptr && tempPlayerTeam[i]->isAlive())
+        {
+            std::string petName = tempPlayerTeam[i]->getName();
+            int hpBefore[5];
+            int targetCount = 0;
+            std::string targetList = "";
+
+            for (int j = 0; j < 5; j++)
+            {
+                hpBefore[j] = -1;
+
+                if (tempEnemyTeam[j] != nullptr)
+                {
+                    hpBefore[j] = tempEnemyTeam[j]->getHp();
+                }
+            }
+
             tempPlayerTeam[i]->onBattleStart(tempEnemyTeam, 5);
 
-            if (tempPlayerTeam[i]->getName() == "Mosquito" || tempPlayerTeam[i]->getName() == "Skunk") {
-                addLog(tempPlayerTeam[i]->getName() + " start battle skill triggered.", true, tempPlayerTeam, tempEnemyTeam);
+            if (petName == "Mosquito")
+            {
+                for (int j = 0; j < 5; j++)
+                {
+                    if (tempEnemyTeam[j] != nullptr && hpBefore[j] > tempEnemyTeam[j]->getHp())
+                    {
+                        if (targetCount > 0)
+                        {
+                            targetList = targetList + ", ";
+                        }
+
+                        targetList = targetList + colorPetName(tempEnemyTeam[j]->getName(), false);
+                        targetCount++;
+                    }
+                }
+
+                if (targetCount == 0)
+                {
+                    addLog(formatBattleLog(0, "SKILL", colorPetName(petName, true) + " snipes no valid target."), true, tempPlayerTeam, tempEnemyTeam);
+                }
+                else
+                {
+                    addLog(formatBattleLog(0, "SKILL", colorPetName(petName, true) + " snipes " + targetList + " for 1 damage."), true, tempPlayerTeam, tempEnemyTeam);
+                }
+            }
+            else if (petName == "Skunk")
+            {
+                for (int j = 0; j < 5; j++)
+                {
+                    if (tempEnemyTeam[j] != nullptr && hpBefore[j] > tempEnemyTeam[j]->getHp())
+                    {
+                        targetList = colorPetName(tempEnemyTeam[j]->getName(), false);
+                        targetCount = 1;
+                        break;
+                    }
+                }
+
+                if (targetCount == 0)
+                {
+                    addLog(formatBattleLog(0, "SKILL", colorPetName(petName, true) + " finds no valid target."), true, tempPlayerTeam, tempEnemyTeam);
+                }
+                else
+                {
+                    addLog(formatBattleLog(0, "SKILL", colorPetName(petName, true) + " weakens " + targetList + "."), true, tempPlayerTeam, tempEnemyTeam);
+                }
             }
 
-            removeFaintedPets(tempEnemyTeam, tempPlayerTeam, tempEnemyTeam);
+            removeFaintedPets(tempEnemyTeam, tempPlayerTeam, tempEnemyTeam, "Enemy", false, 0);
         }
 
-        if (tempEnemyTeam[i] != nullptr && tempEnemyTeam[i]->isAlive()) {
-            tempEnemyTeam[i]->onBattleStart(tempPlayerTeam, 5);
+        if (tempEnemyTeam[i] != nullptr && tempEnemyTeam[i]->isAlive())
+        {
+            std::string petName = tempEnemyTeam[i]->getName();
+            int hpBefore[5];
+            int targetCount = 0;
+            std::string targetList = "";
 
-            if (tempEnemyTeam[i]->getName() == "Mosquito" || tempEnemyTeam[i]->getName() == "Skunk") {
-                addLog(tempEnemyTeam[i]->getName() + " start battle skill triggered.", true, tempPlayerTeam, tempEnemyTeam);
+            for (int j = 0; j < 5; j++)
+            {
+                hpBefore[j] = -1;
+
+                if (tempPlayerTeam[j] != nullptr)
+                {
+                    hpBefore[j] = tempPlayerTeam[j]->getHp();
+                }
             }
 
-            removeFaintedPets(tempPlayerTeam, tempPlayerTeam, tempEnemyTeam);
+            tempEnemyTeam[i]->onBattleStart(tempPlayerTeam, 5);
+
+            if (petName == "Mosquito")
+            {
+                for (int j = 0; j < 5; j++)
+                {
+                    if (tempPlayerTeam[j] != nullptr && hpBefore[j] > tempPlayerTeam[j]->getHp())
+                    {
+                        if (targetCount > 0)
+                        {
+                            targetList = targetList + ", ";
+                        }
+
+                        targetList = targetList + colorPetName(tempPlayerTeam[j]->getName(), true);
+                        targetCount++;
+                    }
+                }
+
+                if (targetCount == 0)
+                {
+                    addLog(formatBattleLog(0, "SKILL", colorPetName(petName, false) + " snipes no valid target."), true, tempPlayerTeam, tempEnemyTeam);
+                }
+                else
+                {
+                    addLog(formatBattleLog(0, "SKILL", colorPetName(petName, false) + " snipes " + targetList + " for 1 damage."), true, tempPlayerTeam, tempEnemyTeam);
+                }
+            }
+            else if (petName == "Skunk")
+            {
+                for (int j = 0; j < 5; j++)
+                {
+                    if (tempPlayerTeam[j] != nullptr && hpBefore[j] > tempPlayerTeam[j]->getHp())
+                    {
+                        targetList = colorPetName(tempPlayerTeam[j]->getName(), true);
+                        targetCount = 1;
+                        break;
+                    }
+                }
+
+                if (targetCount == 0)
+                {
+                    addLog(formatBattleLog(0, "SKILL", colorPetName(petName, false) + " finds no valid target."), true, tempPlayerTeam, tempEnemyTeam);
+                }
+                else
+                {
+                    addLog(formatBattleLog(0, "SKILL", colorPetName(petName, false) + " weakens " + targetList + "."), true, tempPlayerTeam, tempEnemyTeam);
+                }
+            }
+
+            removeFaintedPets(tempPlayerTeam, tempPlayerTeam, tempEnemyTeam, "Player", true, 0);
         }
     }
 
-    while (true) {
+    while (true)
+    {
         int playerFrontIndex = findFrontIndex(tempPlayerTeam);
         int enemyFrontIndex = findFrontIndex(tempEnemyTeam);
 
-        if (playerFrontIndex == -1 && enemyFrontIndex == -1) {
+        if (playerFrontIndex == -1 && enemyFrontIndex == -1)
+        {
             battleResult = 0;
             break;
         }
 
-        if (playerFrontIndex == -1) {
+        if (playerFrontIndex == -1)
+        {
             battleResult = -1;
             break;
         }
 
-        if (enemyFrontIndex == -1) {
+        if (enemyFrontIndex == -1)
+        {
             battleResult = 1;
             break;
         }
 
-        Pet* playerFront = tempPlayerTeam[playerFrontIndex];
-        Pet* enemyFront = tempEnemyTeam[enemyFrontIndex];
+        addLog(formatBattleLog(roundNumber, "ROUND", "Combat exchange begins."), true, tempPlayerTeam, tempEnemyTeam);
+
+        Pet *playerFront = tempPlayerTeam[playerFrontIndex];
+        Pet *enemyFront = tempEnemyTeam[enemyFrontIndex];
         int playerAttack = playerFront->getAttack();
         int enemyAttack = enemyFront->getAttack();
         int playerHpBeforeDamage = playerFront->getHp();
         int enemyHpBeforeDamage = enemyFront->getHp();
 
+        std::string playerName = colorPetName(playerFront->getName(), true);
+        std::string enemyName = colorPetName(enemyFront->getName(), false);
+
         playerFront->onAttack(tempPlayerTeam, playerFrontIndex, 5);
-        if (playerFront->getName() == "Elephant") {
-            addLog(playerFront->getName() + " attack skill triggered.", true, tempPlayerTeam, tempEnemyTeam);
+        if (playerFront->getName() == "Elephant")
+        {
+            int targetIndex = -1;
+
+            for (int k = playerFrontIndex - 1; k >= 0; k--)
+            {
+                if (tempPlayerTeam[k] != nullptr && tempPlayerTeam[k]->isAlive())
+                {
+                    targetIndex = k;
+                    break;
+                }
+            }
+
+            if (targetIndex >= 0)
+            {
+                std::string targetName = colorPetName(tempPlayerTeam[targetIndex]->getName(), true);
+                addLog(formatBattleLog(roundNumber, "SKILL", playerName + " tramples " + targetName + " for 1 damage x" + std::to_string(playerFront->getLevel()) + "."), true, tempPlayerTeam, tempEnemyTeam);
+            }
+            else
+            {
+                addLog(formatBattleLog(roundNumber, "SKILL", playerName + " has no ally behind to trample."), true, tempPlayerTeam, tempEnemyTeam);
+            }
         }
-        removeFaintedPets(tempPlayerTeam, tempPlayerTeam, tempEnemyTeam);
-        removeFaintedPets(tempEnemyTeam, tempPlayerTeam, tempEnemyTeam);
+        removeFaintedPets(tempPlayerTeam, tempPlayerTeam, tempEnemyTeam, "Player", true, roundNumber);
+        removeFaintedPets(tempEnemyTeam, tempPlayerTeam, tempEnemyTeam, "Enemy", false, roundNumber);
 
         enemyFront->onAttack(tempEnemyTeam, enemyFrontIndex, 5);
-        if (enemyFront->getName() == "Elephant") {
-            addLog(enemyFront->getName() + " attack skill triggered.", true, tempPlayerTeam, tempEnemyTeam);
+        if (enemyFront->getName() == "Elephant")
+        {
+            int targetIndex = -1;
+
+            for (int k = enemyFrontIndex - 1; k >= 0; k--)
+            {
+                if (tempEnemyTeam[k] != nullptr && tempEnemyTeam[k]->isAlive())
+                {
+                    targetIndex = k;
+                    break;
+                }
+            }
+
+            if (targetIndex >= 0)
+            {
+                std::string targetName = colorPetName(tempEnemyTeam[targetIndex]->getName(), false);
+                addLog(formatBattleLog(roundNumber, "SKILL", enemyName + " tramples " + targetName + " for 1 damage x" + std::to_string(enemyFront->getLevel()) + "."), true, tempPlayerTeam, tempEnemyTeam);
+            }
+            else
+            {
+                addLog(formatBattleLog(roundNumber, "SKILL", enemyName + " has no ally behind to trample."), true, tempPlayerTeam, tempEnemyTeam);
+            }
         }
-        removeFaintedPets(tempPlayerTeam, tempPlayerTeam, tempEnemyTeam);
-        removeFaintedPets(tempEnemyTeam, tempPlayerTeam, tempEnemyTeam);
+        removeFaintedPets(tempPlayerTeam, tempPlayerTeam, tempEnemyTeam, "Player", true, roundNumber);
+        removeFaintedPets(tempEnemyTeam, tempPlayerTeam, tempEnemyTeam, "Enemy", false, roundNumber);
 
         playerFrontIndex = findFrontIndex(tempPlayerTeam);
         enemyFrontIndex = findFrontIndex(tempEnemyTeam);
 
-        if (playerFrontIndex == -1 || enemyFrontIndex == -1) {
+        if (playerFrontIndex == -1 || enemyFrontIndex == -1)
+        {
             continue;
         }
 
@@ -898,49 +1401,184 @@ int Game::battlePhase() {
         playerHpBeforeDamage = playerFront->getHp();
         enemyHpBeforeDamage = enemyFront->getHp();
 
-        addLog(playerFront->getName() + " attacks " + enemyFront->getName() + " for " + std::to_string(playerAttack) + " damage.", true, tempPlayerTeam, tempEnemyTeam);
-        addLog(enemyFront->getName() + " attacks " + playerFront->getName() + " for " + std::to_string(enemyAttack) + " damage.", true, tempPlayerTeam, tempEnemyTeam);
+        playerName = colorPetName(playerFront->getName(), true);
+        enemyName = colorPetName(enemyFront->getName(), false);
+        addLog(formatBattleLog(roundNumber, "ATTACK", playerName + " -> " + enemyName + ", DMG " + std::to_string(playerAttack) + "."), true, tempPlayerTeam, tempEnemyTeam);
+        addLog(formatBattleLog(roundNumber, "ATTACK", enemyName + " -> " + playerName + ", DMG " + std::to_string(enemyAttack) + "."), true, tempPlayerTeam, tempEnemyTeam);
 
         enemyFront->takeDamage(playerAttack);
         playerFront->takeDamage(enemyAttack);
+        addLog(formatBattleLog(roundNumber, "STATE", playerName + " HP " + std::to_string(playerHpBeforeDamage) + "->" + std::to_string(playerFront->getHp()) + ", " + enemyName + " HP " + std::to_string(enemyHpBeforeDamage) + "->" + std::to_string(enemyFront->getHp()) + "."), true, tempPlayerTeam, tempEnemyTeam);
 
-        drawUI(tempPlayerTeam, tempEnemyTeam);
-        std::this_thread::sleep_for(std::chrono::milliseconds(800));
+        if (playerFront->getHp() > 0 && playerFront->getHp() < playerHpBeforeDamage)
+        {
+            if (playerFront->getName() == "Camel")
+            {
+                int targetIndex = -1;
+                int atkBefore = 0;
+                int hpBefore = 0;
 
-        if (playerFront->getHp() > 0 && playerFront->getHp() < playerHpBeforeDamage) {
-            playerFront->onHurt(tempPlayerTeam, playerFrontIndex, 5, tempEnemyTeam, 5);
+                for (int k = playerFrontIndex - 1; k >= 0; k--)
+                {
+                    if (tempPlayerTeam[k] != nullptr && tempPlayerTeam[k]->isAlive())
+                    {
+                        targetIndex = k;
+                        atkBefore = tempPlayerTeam[k]->getAttack();
+                        hpBefore = tempPlayerTeam[k]->getHp();
+                        break;
+                    }
+                }
 
-            if (playerFront->getName() == "Camel" || playerFront->getName() == "Blowfish") {
-                addLog(playerFront->getName() + " hurt skill triggered.", true, tempPlayerTeam, tempEnemyTeam);
+                playerFront->onHurt(tempPlayerTeam, playerFrontIndex, 5, tempEnemyTeam, 5);
+
+                if (targetIndex >= 0 && tempPlayerTeam[targetIndex] != nullptr)
+                {
+                    std::string targetName = colorPetName(tempPlayerTeam[targetIndex]->getName(), true);
+                    addLog(formatBattleLog(roundNumber, "SKILL", playerName + " buffs " + targetName + " (" + std::to_string(atkBefore) + "/" + std::to_string(hpBefore) + " -> " + std::to_string(tempPlayerTeam[targetIndex]->getAttack()) + "/" + std::to_string(tempPlayerTeam[targetIndex]->getHp()) + ")."), true, tempPlayerTeam, tempEnemyTeam);
+                }
+                else
+                {
+                    addLog(formatBattleLog(roundNumber, "SKILL", playerName + " has no ally behind to buff."), true, tempPlayerTeam, tempEnemyTeam);
+                }
+            }
+            else if (playerFront->getName() == "Blowfish")
+            {
+                int hpBeforeEnemy[5];
+                int targetIndex = -1;
+
+                for (int k = 0; k < 5; k++)
+                {
+                    hpBeforeEnemy[k] = -1;
+
+                    if (tempEnemyTeam[k] != nullptr)
+                    {
+                        hpBeforeEnemy[k] = tempEnemyTeam[k]->getHp();
+                    }
+                }
+
+                playerFront->onHurt(tempPlayerTeam, playerFrontIndex, 5, tempEnemyTeam, 5);
+
+                for (int k = 0; k < 5; k++)
+                {
+                    if (tempEnemyTeam[k] != nullptr && hpBeforeEnemy[k] > tempEnemyTeam[k]->getHp())
+                    {
+                        targetIndex = k;
+                        break;
+                    }
+                }
+
+                if (targetIndex >= 0)
+                {
+                    std::string targetName = colorPetName(tempEnemyTeam[targetIndex]->getName(), false);
+                    addLog(formatBattleLog(roundNumber, "SKILL", playerName + " splashes " + targetName + " for " + std::to_string(3 * playerFront->getLevel()) + "."), true, tempPlayerTeam, tempEnemyTeam);
+                }
+                else
+                {
+                    addLog(formatBattleLog(roundNumber, "SKILL", playerName + " finds no valid splash target."), true, tempPlayerTeam, tempEnemyTeam);
+                }
+            }
+            else
+            {
+                playerFront->onHurt(tempPlayerTeam, playerFrontIndex, 5, tempEnemyTeam, 5);
             }
         }
 
-        if (enemyFront->getHp() > 0 && enemyFront->getHp() < enemyHpBeforeDamage) {
-            enemyFront->onHurt(tempEnemyTeam, enemyFrontIndex, 5, tempPlayerTeam, 5);
+        if (enemyFront->getHp() > 0 && enemyFront->getHp() < enemyHpBeforeDamage)
+        {
+            if (enemyFront->getName() == "Camel")
+            {
+                int targetIndex = -1;
+                int atkBefore = 0;
+                int hpBefore = 0;
 
-            if (enemyFront->getName() == "Camel" || enemyFront->getName() == "Blowfish") {
-                addLog(enemyFront->getName() + " hurt skill triggered.", true, tempPlayerTeam, tempEnemyTeam);
+                for (int k = enemyFrontIndex - 1; k >= 0; k--)
+                {
+                    if (tempEnemyTeam[k] != nullptr && tempEnemyTeam[k]->isAlive())
+                    {
+                        targetIndex = k;
+                        atkBefore = tempEnemyTeam[k]->getAttack();
+                        hpBefore = tempEnemyTeam[k]->getHp();
+                        break;
+                    }
+                }
+
+                enemyFront->onHurt(tempEnemyTeam, enemyFrontIndex, 5, tempPlayerTeam, 5);
+
+                if (targetIndex >= 0 && tempEnemyTeam[targetIndex] != nullptr)
+                {
+                    std::string targetName = colorPetName(tempEnemyTeam[targetIndex]->getName(), false);
+                    addLog(formatBattleLog(roundNumber, "SKILL", enemyName + " buffs " + targetName + " (" + std::to_string(atkBefore) + "/" + std::to_string(hpBefore) + " -> " + std::to_string(tempEnemyTeam[targetIndex]->getAttack()) + "/" + std::to_string(tempEnemyTeam[targetIndex]->getHp()) + ")."), true, tempPlayerTeam, tempEnemyTeam);
+                }
+                else
+                {
+                    addLog(formatBattleLog(roundNumber, "SKILL", enemyName + " has no ally behind to buff."), true, tempPlayerTeam, tempEnemyTeam);
+                }
+            }
+            else if (enemyFront->getName() == "Blowfish")
+            {
+                int hpBeforePlayer[5];
+                int targetIndex = -1;
+
+                for (int k = 0; k < 5; k++)
+                {
+                    hpBeforePlayer[k] = -1;
+
+                    if (tempPlayerTeam[k] != nullptr)
+                    {
+                        hpBeforePlayer[k] = tempPlayerTeam[k]->getHp();
+                    }
+                }
+
+                enemyFront->onHurt(tempEnemyTeam, enemyFrontIndex, 5, tempPlayerTeam, 5);
+
+                for (int k = 0; k < 5; k++)
+                {
+                    if (tempPlayerTeam[k] != nullptr && hpBeforePlayer[k] > tempPlayerTeam[k]->getHp())
+                    {
+                        targetIndex = k;
+                        break;
+                    }
+                }
+
+                if (targetIndex >= 0)
+                {
+                    std::string targetName = colorPetName(tempPlayerTeam[targetIndex]->getName(), true);
+                    addLog(formatBattleLog(roundNumber, "SKILL", enemyName + " splashes " + targetName + " for " + std::to_string(3 * enemyFront->getLevel()) + "."), true, tempPlayerTeam, tempEnemyTeam);
+                }
+                else
+                {
+                    addLog(formatBattleLog(roundNumber, "SKILL", enemyName + " finds no valid splash target."), true, tempPlayerTeam, tempEnemyTeam);
+                }
+            }
+            else
+            {
+                enemyFront->onHurt(tempEnemyTeam, enemyFrontIndex, 5, tempPlayerTeam, 5);
             }
         }
 
-        if (enemyFront->getHp() <= 0 && playerFront->getHp() > 0) {
+        if (enemyFront->getHp() <= 0 && playerFront->getHp() > 0)
+        {
             playerFront->onKnockOut(enemyFront);
 
-            if (playerFront->getName() == "Hippo") {
-                addLog(playerFront->getName() + " knock out skill triggered.", true, tempPlayerTeam, tempEnemyTeam);
+            if (playerFront->getName() == "Hippo")
+            {
+                addLog(formatBattleLog(roundNumber, "SKILL", playerName + " gains +" + std::to_string(3 * playerFront->getLevel()) + "/+" + std::to_string(3 * playerFront->getLevel()) + "."), true, tempPlayerTeam, tempEnemyTeam);
             }
         }
 
-        if (playerFront->getHp() <= 0 && enemyFront->getHp() > 0) {
+        if (playerFront->getHp() <= 0 && enemyFront->getHp() > 0)
+        {
             enemyFront->onKnockOut(playerFront);
 
-            if (enemyFront->getName() == "Hippo") {
-                addLog(enemyFront->getName() + " knock out skill triggered.", true, tempPlayerTeam, tempEnemyTeam);
+            if (enemyFront->getName() == "Hippo")
+            {
+                addLog(formatBattleLog(roundNumber, "SKILL", enemyName + " gains +" + std::to_string(3 * enemyFront->getLevel()) + "/+" + std::to_string(3 * enemyFront->getLevel()) + "."), true, tempPlayerTeam, tempEnemyTeam);
             }
         }
 
-        removeFaintedPets(tempPlayerTeam, tempPlayerTeam, tempEnemyTeam);
-        removeFaintedPets(tempEnemyTeam, tempPlayerTeam, tempEnemyTeam);
+        removeFaintedPets(tempPlayerTeam, tempPlayerTeam, tempEnemyTeam, "Player", true, roundNumber);
+        removeFaintedPets(tempEnemyTeam, tempPlayerTeam, tempEnemyTeam, "Enemy", false, roundNumber);
+        roundNumber++;
     }
 
     clearTempTeam(tempPlayerTeam);
@@ -952,159 +1590,208 @@ int Game::battlePhase() {
 // What it does: Runs the shop phase command loop.
 // What the inputs are: None.
 // What the outputs are: Processes player commands until the player ends the phase or the game ends.
-void Game::shopPhase() {
+void Game::shopPhase()
+{
     char command;
     std::string commandLine;
     std::string cleanCommand;
 
     player->resetGold();
 
-    for (int i = 0; i < 5; i++) {
-        Pet* pet = player->getTeamPet(i);
+    for (int i = 0; i < 5; i++)
+    {
+        Pet *pet = player->getTeamPet(i);
 
-        if (pet != nullptr) {
+        if (pet != nullptr)
+        {
             pet->onShopStart(player);
 
-            if (pet->getName() == "Swan") {
+            if (pet->getName() == "Swan")
+            {
                 addLog("Swan shop start skill triggered.", true);
             }
         }
     }
 
-    while (true) {
-        if (player->getHp() <= 0) {
+    while (true)
+    {
+        if (player->getHp() <= 0)
+        {
             addLog("Defeat. The player has no HP left.", true);
             return;
         }
 
-        if (wins >= 10) {
+        if (wins >= 10)
+        {
             addLog("Victory. The player reached 10 wins.", true);
             return;
         }
 
         drawUI();
 
-        if (!std::getline(std::cin, commandLine)) {
+        if (!std::getline(std::cin, commandLine))
+        {
             return;
         }
 
         cleanCommand = preprocessCommand(commandLine);
 
-        if (cleanCommand.size() == 0) {
+        if (cleanCommand.size() == 0)
+        {
             addLog("Invalid command format!", true);
             continue;
         }
 
         command = cleanCommand[0];
 
-        if (command == 18) {
+        if (command == 18)
+        {
             command = 'r';
         }
 
-        if (command == 'r') {
-            if (cleanCommand.size() != 1) {
+        if (command == 'r')
+        {
+            if (cleanCommand.size() != 1)
+            {
                 addLog("Invalid command format!", true);
                 continue;
             }
 
-            if (player->spendGold(1)) {
+            if (player->spendGold(1))
+            {
                 rollShop();
                 addLog("Rolled a completely new shop.", true);
-            } else {
+            }
+            else
+            {
                 addLog("Not enough gold to roll.", true);
             }
-        } else if (command == 'b') {
+        }
+        else if (command == 'b')
+        {
             int shopIndex = -1;
             int targetSlot = -1;
 
-            if (cleanCommand.size() != 3) {
+            if (cleanCommand.size() != 3)
+            {
                 addLog("Invalid command format!", true);
                 continue;
             }
 
             shopIndex = getShopIndex(cleanCommand[1]);
 
-            if (cleanCommand[2] >= '1' && cleanCommand[2] <= '5') {
+            if (cleanCommand[2] >= '1' && cleanCommand[2] <= '5')
+            {
                 targetSlot = cleanCommand[2] - '1';
             }
 
-            if (shopIndex < 0 || targetSlot < 0 || targetSlot >= 5) {
+            if (shopIndex < 0 || targetSlot < 0 || targetSlot >= 5)
+            {
                 addLog("Invalid command format!", true);
-            } else if (shopPets[shopIndex] == nullptr) {
+            }
+            else if (shopPets[shopIndex] == nullptr)
+            {
                 addLog("That shop slot is empty.", true);
-            } else if (player->buyPet(shopPets[shopIndex], targetSlot)) {
+            }
+            else if (player->buyPet(shopPets[shopIndex], targetSlot))
+            {
                 shopPets[shopIndex] = nullptr;
                 addLog("Bought or merged the shop pet.", true);
-            } else {
+            }
+            else
+            {
                 addLog("Buy failed. Check gold or target slot.", true);
             }
-        } else if (command == 's') {
+        }
+        else if (command == 's')
+        {
             int targetSlot = -1;
-            Pet* soldPet = nullptr;
+            Pet *soldPet = nullptr;
 
-            if (cleanCommand.size() != 2) {
+            if (cleanCommand.size() != 2)
+            {
                 addLog("Invalid command format!", true);
                 continue;
             }
 
-            if (cleanCommand[1] >= '1' && cleanCommand[1] <= '5') {
+            if (cleanCommand[1] >= '1' && cleanCommand[1] <= '5')
+            {
                 targetSlot = cleanCommand[1] - '1';
             }
 
             soldPet = player->getTeamPet(targetSlot);
 
-            if (soldPet == nullptr) {
+            if (soldPet == nullptr)
+            {
                 addLog("There is no pet in that slot.", true);
-            } else {
+            }
+            else
+            {
                 std::string soldName = soldPet->getName();
                 int soldLevel = soldPet->getLevel();
                 player->sellPet(targetSlot);
                 addLog("Sold " + soldName + " for " + std::to_string(soldLevel) + " gold.", true);
             }
-        } else if (command == 'm') {
+        }
+        else if (command == 'm')
+        {
             int fromSlot = -1;
             int toSlot = -1;
 
-            if (cleanCommand.size() != 3) {
+            if (cleanCommand.size() != 3)
+            {
                 addLog("Invalid command format!", true);
                 continue;
             }
 
-            if (cleanCommand[1] >= '1' && cleanCommand[1] <= '5') {
+            if (cleanCommand[1] >= '1' && cleanCommand[1] <= '5')
+            {
                 fromSlot = cleanCommand[1] - '1';
             }
 
-            if (cleanCommand[2] >= '1' && cleanCommand[2] <= '5') {
+            if (cleanCommand[2] >= '1' && cleanCommand[2] <= '5')
+            {
                 toSlot = cleanCommand[2] - '1';
             }
 
-            if (fromSlot < 0 || fromSlot >= 5 || toSlot < 0 || toSlot >= 5) {
+            if (fromSlot < 0 || fromSlot >= 5 || toSlot < 0 || toSlot >= 5)
+            {
                 addLog("Invalid command format!", true);
-            } else if (player->movePet(fromSlot, toSlot)) {
+            }
+            else if (player->movePet(fromSlot, toSlot))
+            {
                 addLog("Moved team slot " + std::to_string(fromSlot + 1) + " and slot " + std::to_string(toSlot + 1) + ".", true);
-            } else {
+            }
+            else
+            {
                 addLog("Move failed. Source slot is empty.", true);
             }
-        } else if (command == 'c') {
+        }
+        else if (command == 'c')
+        {
             int fromSlot = -1;
             int toSlot = -1;
-            Pet* sourcePet = nullptr;
-            Pet* targetPet = nullptr;
+            Pet *sourcePet = nullptr;
+            Pet *targetPet = nullptr;
 
-            if (cleanCommand.size() != 3) {
+            if (cleanCommand.size() != 3)
+            {
                 addLog("Invalid command format!", true);
                 continue;
             }
 
-            if (cleanCommand[1] >= '1' && cleanCommand[1] <= '5') {
+            if (cleanCommand[1] >= '1' && cleanCommand[1] <= '5')
+            {
                 fromSlot = cleanCommand[1] - '1';
             }
 
-            if (cleanCommand[2] >= '1' && cleanCommand[2] <= '5') {
+            if (cleanCommand[2] >= '1' && cleanCommand[2] <= '5')
+            {
                 toSlot = cleanCommand[2] - '1';
             }
 
-            if (fromSlot < 0 || fromSlot >= 5 || toSlot < 0 || toSlot >= 5 || fromSlot == toSlot) {
+            if (fromSlot < 0 || fromSlot >= 5 || toSlot < 0 || toSlot >= 5 || fromSlot == toSlot)
+            {
                 addLog("Invalid command format!", true);
                 continue;
             }
@@ -1112,30 +1799,45 @@ void Game::shopPhase() {
             sourcePet = player->getTeamPet(fromSlot);
             targetPet = player->getTeamPet(toSlot);
 
-            if (sourcePet == nullptr || targetPet == nullptr) {
+            if (sourcePet == nullptr || targetPet == nullptr)
+            {
                 addLog("Combine failed. Both slots need pets.", true);
-            } else if (sourcePet->getName() != targetPet->getName()) {
+            }
+            else if (sourcePet->getName() != targetPet->getName())
+            {
                 addLog("Combine failed. Pets must be the same type.", true);
-            } else if (sourcePet->getLevel() >= 3 || targetPet->getLevel() >= 3) {
+            }
+            else if (sourcePet->getLevel() >= 3 || targetPet->getLevel() >= 3)
+            {
                 addLog("Combine failed. Lv3 pets cannot combine.", true);
-            } else if (player->combinePets(fromSlot, toSlot)) {
+            }
+            else if (player->combinePets(fromSlot, toSlot))
+            {
                 addLog("Combined slot " + std::to_string(fromSlot + 1) + " into slot " + std::to_string(toSlot + 1) + ".", true);
-            } else {
+            }
+            else
+            {
                 addLog("Combine failed.", true);
             }
-        } else if (command == 'e') {
-            if (cleanCommand.size() != 1) {
+        }
+        else if (command == 'e')
+        {
+            if (cleanCommand.size() != 1)
+            {
                 addLog("Invalid command format!", true);
                 continue;
             }
 
-            for (int i = 0; i < 5; i++) {
-                Pet* pet = player->getTeamPet(i);
+            for (int i = 0; i < 5; i++)
+            {
+                Pet *pet = player->getTeamPet(i);
 
-                if (pet != nullptr) {
+                if (pet != nullptr)
+                {
                     pet->onShopEnd(player->getTeamArray(), 5);
 
-                    if (pet->getName() == "Monkey") {
+                    if (pet->getName() == "Monkey")
+                    {
                         addLog("Monkey shop end skill triggered.", true);
                     }
                 }
@@ -1143,7 +1845,9 @@ void Game::shopPhase() {
 
             addLog("Ending shop phase.", true);
             return;
-        } else {
+        }
+        else
+        {
             addLog("Invalid command format!", true);
         }
     }
@@ -1152,19 +1856,24 @@ void Game::shopPhase() {
 // What it does: Runs the main game loop until victory or defeat.
 // What the inputs are: None.
 // What the outputs are: Runs shop, enemy generation, battle result, and final game over output.
-void Game::start() {
-    if (!selectDifficulty()) {
+void Game::start()
+{
+    if (!selectDifficulty())
+    {
         return;
     }
 
-    while (player->getHp() > 0 && wins < 10) {
+    while (player->getHp() > 0 && wins < 10)
+    {
         shopPhase();
 
-        if (!std::cin) {
+        if (!std::cin)
+        {
             break;
         }
 
-        if (player->getHp() <= 0 || wins >= 10) {
+        if (player->getHp() <= 0 || wins >= 10)
+        {
             break;
         }
 
@@ -1175,13 +1884,18 @@ void Game::start() {
         std::cout << "Turn " << currentTurn << " Result" << std::endl;
         std::cout << std::endl;
 
-        if (battleResult == 1) {
+        if (battleResult == 1)
+        {
             std::cout << "You won this round! o(>▽<)o" << std::endl;
             wins++;
-        } else if (battleResult == -1) {
+        }
+        else if (battleResult == -1)
+        {
             std::cout << "You lost! (╥﹏╥)" << std::endl;
             player->loseHp(1);
-        } else {
+        }
+        else
+        {
             std::cout << "It's a draw ╮(─▽─)╭" << std::endl;
             std::cout << "No HP lost." << std::endl;
         }
@@ -1198,9 +1912,12 @@ void Game::start() {
     std::cout << "Game Over" << std::endl;
     std::cout << std::endl;
 
-    if (wins >= 10) {
+    if (wins >= 10)
+    {
         std::cout << "Victory. You reached 10 wins." << std::endl;
-    } else {
+    }
+    else
+    {
         std::cout << "Defeat. The player has no HP left." << std::endl;
     }
 }

@@ -7,22 +7,25 @@
 #include <string>
 #include <vector>
 
-#define RESET   "\033[0m"
-#define RED     "\033[31m"
-#define YELLOW  "\033[33m"
-#define CYAN    "\033[36m"
-#define GREEN   "\033[32m"
+#define RESET "\033[0m"
+#define RED "\033[31m"
+#define BLUE "\033[34m"
+#define YELLOW "\033[33m"
+#define CYAN "\033[36m"
+#define GREEN "\033[32m"
 
-class Game {
+class Game
+{
 private:
-    enum DifficultyMode {
+    enum DifficultyMode
+    {
         NORMAL_MODE,
         HARD_MODE
     };
 
-    Player* player;
-    Pet* shopPets[3];
-    Pet* enemyTeam[5];
+    Player *player;
+    Pet *shopPets[3];
+    Pet *enemyTeam[5];
     int currentTurn;
     int wins;
     DifficultyMode difficultyMode;
@@ -31,33 +34,36 @@ private:
     bool selectDifficulty();
     std::string getDifficultyName() const;
     void rollShop();
-    Pet* createRandomPetByTier(int maxTier);
+    Pet *createRandomPetByTier(int maxTier);
     void generateEnemyTeam(int turn);
-    void applyEnemyScaling(Pet* pet, int turn);
-    void applyNormalEnemyScaling(Pet* pet, int turn);
-    void applyHardEnemyScaling(Pet* pet, int turn);
-    void boostHardEnemyStats(Pet* pet);
+    void applyEnemyScaling(Pet *pet, int turn);
+    void applyNormalEnemyScaling(Pet *pet, int turn);
+    void applyHardEnemyScaling(Pet *pet, int turn);
+    void boostHardEnemyStats(Pet *pet);
     void clearShop();
     void clearEnemyTeam();
-    void clonePlayerTeam(Pet* targetTeam[5]);
-    void cloneEnemyTeam(Pet* targetTeam[5]);
-    void clearTempTeam(Pet* team[5]);
-    int findFrontIndex(Pet* team[5]);
-    void shiftTeamRight(Pet* team[5]);
-    bool hasAnyPet(Pet* team[5]);
-    void removeFaintedPets(Pet* team[5], Pet** activePlayerTeam, Pet** activeEnemyTeam);
+    void clonePlayerTeam(Pet *targetTeam[5]);
+    void cloneEnemyTeam(Pet *targetTeam[5]);
+    void clearTempTeam(Pet *team[5]);
+    int findFrontIndex(Pet *team[5]);
+    void shiftTeamRight(Pet *team[5]);
+    bool hasAnyPet(Pet *team[5]);
+    void removeFaintedPets(Pet *team[5], Pet **activePlayerTeam, Pet **activeEnemyTeam, const std::string &teamLabel, bool isPlayerTeam, int roundNumber);
     int getShopIndex(char shopLetter);
     std::string preprocessCommand(std::string inputLine);
     void printBoxCell(std::string text, int width);
-    std::string getPetNameLine(Pet* pet);
+    std::string getPetNameLine(Pet *pet);
+    std::string colorPetName(const std::string &petName, bool isPlayerPet);
+    std::string colorFactionLabel(bool isPlayerTeam);
+    std::string formatBattleLog(int roundNumber, const std::string &tag, const std::string &detail);
     int battlePhase();
 
 public:
     Game();
     ~Game();
 
-    void addLog(std::string msg, bool autoDelay = false, Pet** activePlayerTeam = nullptr, Pet** activeEnemyTeam = nullptr);
-    void drawUI(Pet** activePlayerTeam = nullptr, Pet** activeEnemyTeam = nullptr);
+    void addLog(std::string msg, bool autoDelay = false, Pet **activePlayerTeam = nullptr, Pet **activeEnemyTeam = nullptr);
+    void drawUI(Pet **activePlayerTeam = nullptr, Pet **activeEnemyTeam = nullptr);
     void shopPhase();
     void start();
 };
