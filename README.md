@@ -17,7 +17,7 @@ A text-based mini auto-battler game inspired by Super Auto Pets.
 
 ## Video Demo
 
-\[link]
+[Video Demo](https://drive.google.com/file/d/1YX86DkuffcAT4XvVlBKdxOknsdlIDKzE/view?usp=sharing)
 
 ## How to use
 
