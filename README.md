@@ -1,3 +1,5 @@
+# CLI Auto Pets
+
 ```text
    ____ _     ___      _         _          ____      _
   / ___| |   |_ _|    / \  _   _| |_ ___   |  _ \ ___| |_ ___
@@ -61,7 +63,7 @@ Once a game is started, each turn has two phases:
 | ---------- | -------------------- | -------------------------------------------------------------- |
 | `r`        | **Roll shop**        | Refresh the shop pets (`-1` gold).                             |
 | `b A 1`    | **Buy pet**          | Buy shop pet `A` into team slot `1` (each pet costs `3` gold). |
-| `s 1`      | **Sell pet**         | Sell the pet in slot `1` for `1` gold.                         |
+| `s 1`      | **Sell pet**         | Sell the pet in slot `1` for gold equal to its level (lv3=3coins). |
 | `m 1 4`    | **Move/Swap**        | Move or swap the pet in slot `1` with slot `4`.                |
 | `c 1 4`    | **Combine pets**     | Combine a same-type pet in slot `1` into slot `4`.             |
 | `view ant` | **View pet info**    | Check detailed information about a specific pet (e.g., `ant`). |
@@ -344,9 +346,9 @@ This game is highly suitable to be implemented using OOP principles. By utilizin
 ```cpp
 // Base Class
 class Pet {
-protected:
+private:
     std::string name;
-    int hp, attack, level;
+    int hp, attack, level, experience;
 public:
     virtual ~Pet();
     virtual Pet* clone() const;
