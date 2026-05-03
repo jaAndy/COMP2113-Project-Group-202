@@ -284,11 +284,11 @@ SHOP_SLOT C Hippo 3 6 1 0
 SHOP_END
 MESSAGE_LOG_BEGIN
 MESSAGE_COUNT 5
-LOG [R5][ATTACK] [34mElephant[0m -> [31mElephant[0m, DMG 7.
-LOG [R5][ATTACK] [31mElephant[0m -> [34mElephant[0m, DMG 5.
-LOG [R5][STATE] [34mElephant[0m HP 1->0, [31mElephant[0m HP 9->2.
-LOG [R5][FAINT] [34mPlayer[0m [34mElephant[0m faints.
-LOG [R5][SHIFT] [34mPlayer[0m team shifts right.
+LOG [R5][ATTACK] Elephant -> Elephant, DMG 7.
+LOG [R5][ATTACK] Elephant -> Elephant, DMG 5.
+LOG [R5][STATE] Elephant HP 1->0, Elephant HP 9->2.
+LOG [R5][FAINT] Player Elephant faints.
+LOG [R5][SHIFT] Player team shifts right.
 MESSAGE_LOG_END
 END_SAVE
 ```
