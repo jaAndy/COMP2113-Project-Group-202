@@ -21,10 +21,13 @@ A text-based mini auto-battler game inspired by Super Auto Pets.
 
 1. Go to the project directory in your terminal.
 2. Compile the game using Makefile:
+
    ```bash
    make
    ```
+
 3. Run the executable:
+
    ```bash
    ./comp2113_game
    ```
@@ -74,13 +77,13 @@ Once a game is started, each turn has two phases:
 
 ### Goal
 
-Win a total of 5 rounds before your HP reaches 0.
+Win a total of 5 rounds before your HP reaches 0.
 
 ### Pet Encyclopedia
 
 Pets appear in the shop based on round progression:
 
-- Round 1-2: Tier 1  only
+- Round 1-2: Tier 1 only
 - Round 3-4: Tier 1 / Tier 2
 - Round 5+: Tier 1 / Tier 2 / Tier 3
 
@@ -135,6 +138,7 @@ else if (choice == 1) { return new Ant(); }
 Enemy teams are generated randomly for each battle. The enemy's team size, pet tiers, levels, and bonus stats all scale dynamically based on the current turn and the chosen difficulty (Normal or Hard).
 
 **Normal Mode AI Scaling:**
+
 In Normal Mode, the AI follows this scaling table:
 
 | Turn    | Enemy Count | Pet Tiers | Level Probability | Stat Bonus Range |
@@ -151,6 +155,7 @@ In Normal Mode, the AI follows this scaling table:
 | **10+** | 5           | Tier 1-3  | 80% Lv3, else Lv2 | +6 \~ +9         |
 
 **Hard Mode AI Enhancement:**
+
 Hard Mode uses the Normal Mode table as a base, but applies two major enhancements:
 
 | Enhancement                  | Description                                                                                                       | Formula / Example                                                 |
@@ -219,18 +224,23 @@ void Blowfish::onHurt(Pet**, int, int, Pet** enemyTeam, int enemyTeamSize) {
 We use various data structures to effectively track and manage game states during runtime:
 
 - **Arrays**: Pointer arrays are used in the `Player` and `Game` classes to securely store the fixed-size roster of pets on the team and in the shop.
+
   ```cpp
   // From game.h: Fixed-size arrays for game state
   Pet *shopPets[3];
   Pet *enemyTeam[5];
   ```
+
 - **Vectors (`std::vector`)**: Dynamic arrays are used frequently during battles for resolving skills with varying targets. They filter and collect all currently living enemies, allowing random skills to dynamically pick valid targets.
+
   ```cpp
   // From pet.cpp (Mosquito skill): Dynamic array to store valid targets
   std::vector<Pet*> livingEnemies;
   livingEnemies.push_back(enemyTeam[i]); 
   ```
+
 - **Strings (`std::string`)**: Used extensively for parsing user commands and storing message logs.
+
   ```cpp
   // From game.h: Dynamic message log system
   std::vector<std::string> messageLog;
@@ -239,14 +249,18 @@ We use various data structures to effectively track and manage game states durin
 
 ### 3. Dynamic memory management
 
-The game  uses heap memory allocation (`new` and `delete`) to create, move, and destroy pets dynamically.
+The game uses heap memory allocation (`new` and `delete`) to create, move, and destroy pets dynamically.
 
 - **Dynamic Creation (`new`)**: When a shop generates pets or when a pet is cloned for battle, we allocate memory for specific pet types.
+
   ```cpp
   return new Ant();
   ```
+
 - **Memory Transfer**: Instead of copying whole objects, we move pointers. For example, when you buy a pet, the pointer simply moves from the shop array to the player's team array.
+
 - **Safe Deallocation (`delete`)**: To prevent memory leaks, we explicitly delete pets when they are sold, combined, or when the game ends.
+
   ```cpp
   // Example: Selling a pet frees its memory
   gold = gold + team[slotIndex]->getLevel();
@@ -365,5 +379,6 @@ As detailed in [Section 1.2 (Random Enemy Team Generation)](#12-random-enemy-tea
 
 ## Non-standard Libraries
 
-None.\
+None.
+
 This project only uses standard C++ libraries available on the academy Linux server.
