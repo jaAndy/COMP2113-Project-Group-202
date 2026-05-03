@@ -760,7 +760,7 @@ std::string Game::getPetNameLine(Pet *pet)
     }
     else
     {
-        expBar = "[MAX]";
+        expBar = "[MX]";
     }
 
     while (petName.size() > 3 && ("Lv" + std::to_string(pet->getLevel()) + " " + petName + " " + expBar).size() > 23)
@@ -963,7 +963,7 @@ void Game::drawUI(Pet **activePlayerTeam, Pet **activeEnemyTeam)
     }
     std::cout << RED << "[ HP: ♥x" << player->getHp() << " ]" << RESET << "  ";
     std::cout << "[ Turn: " << currentTurn << " ]  ";
-    std::cout << "[ Wins: " << wins << "/10 ]  ";
+    std::cout << "[ Wins: " << wins << "/" << WIN_TARGET << " ]  ";
     std::cout << "[ Mode: " << getDifficultyName() << " ]" << std::endl;
     std::cout << CYAN << "================================================================================" << RESET << std::endl;
     std::cout << std::endl;
@@ -2521,9 +2521,9 @@ void Game::shopPhase()
             return;
         }
 
-        if (wins >= 10)
+        if (wins >= WIN_TARGET)
         {
-            addLog("Victory. The player reached 10 wins.", true);
+            addLog("Victory. The player reached " + std::to_string(WIN_TARGET) + " wins.", true);
             return;
         }
 
@@ -2784,7 +2784,7 @@ void Game::start()
         return;
     }
 
-    while (player->getHp() > 0 && wins < 10)
+    while (player->getHp() > 0 && wins < WIN_TARGET)
     {
         shopPhase();
 
@@ -2798,7 +2798,7 @@ void Game::start()
             break;
         }
 
-        if (player->getHp() <= 0 || wins >= 10)
+        if (player->getHp() <= 0 || wins >= WIN_TARGET)
         {
             break;
         }
@@ -2838,9 +2838,9 @@ void Game::start()
     std::cout << "Game Over" << std::endl;
     std::cout << std::endl;
 
-    if (wins >= 10)
+    if (wins >= WIN_TARGET)
     {
-        std::cout << "Victory. You reached 10 wins." << std::endl;
+        std::cout << "Victory. You reached " << WIN_TARGET << " wins." << std::endl;
     }
     else
     {

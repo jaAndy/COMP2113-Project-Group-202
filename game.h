@@ -26,6 +26,8 @@ private:
         HARD_MODE
     };
 
+    static const int WIN_TARGET = 5;
+
     Player *player;
     Pet *shopPets[3];
     Pet *enemyTeam[5];

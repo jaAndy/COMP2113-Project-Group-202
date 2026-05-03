@@ -220,6 +220,7 @@ void Pet::setFromTotalCopies(int totalCopies) {
 // What the outputs are: Returns a new pet pointer with copied stats and level.
 Pet* Pet::clone() const {
     Pet* copiedPet = new Pet(getName(), getHp(), getAttack());
+    copiedPet->setLevel(getLevel());
     copiedPet->setExperience(getExperience());
     return copiedPet;
 }
@@ -291,6 +292,7 @@ Pet* Swan::clone() const {
     Pet* copiedPet = new Swan();
     copiedPet->setHp(getHp());
     copiedPet->setAttack(getAttack());
+    copiedPet->setLevel(getLevel());
     copiedPet->setExperience(getExperience());
     return copiedPet;
 }
@@ -319,6 +321,7 @@ Pet* Ant::clone() const {
     Pet* copiedPet = new Ant();
     copiedPet->setHp(getHp());
     copiedPet->setAttack(getAttack());
+    copiedPet->setLevel(getLevel());
     copiedPet->setExperience(getExperience());
     return copiedPet;
 }
@@ -361,6 +364,7 @@ Pet* Mosquito::clone() const {
     Pet* copiedPet = new Mosquito();
     copiedPet->setHp(getHp());
     copiedPet->setAttack(getAttack());
+    copiedPet->setLevel(getLevel());
     copiedPet->setExperience(getExperience());
     return copiedPet;
 }
@@ -406,6 +410,7 @@ Pet* Camel::clone() const {
     Pet* copiedPet = new Camel();
     copiedPet->setHp(getHp());
     copiedPet->setAttack(getAttack());
+    copiedPet->setLevel(getLevel());
     copiedPet->setExperience(getExperience());
     return copiedPet;
 }
@@ -439,6 +444,7 @@ Pet* Skunk::clone() const {
     Pet* copiedPet = new Skunk();
     copiedPet->setHp(getHp());
     copiedPet->setAttack(getAttack());
+    copiedPet->setLevel(getLevel());
     copiedPet->setExperience(getExperience());
     return copiedPet;
 }
@@ -490,6 +496,7 @@ Pet* Elephant::clone() const {
     Pet* copiedPet = new Elephant();
     copiedPet->setHp(getHp());
     copiedPet->setAttack(getAttack());
+    copiedPet->setLevel(getLevel());
     copiedPet->setExperience(getExperience());
     return copiedPet;
 }
@@ -526,6 +533,7 @@ Pet* Hippo::clone() const {
     Hippo* copiedPet = new Hippo();
     copiedPet->setHp(getHp());
     copiedPet->setAttack(getAttack());
+    copiedPet->setLevel(getLevel());
     copiedPet->setExperience(getExperience());
     copiedPet->triggerCount = triggerCount;
     return copiedPet;
@@ -568,6 +576,7 @@ Pet* Blowfish::clone() const {
     Pet* copiedPet = new Blowfish();
     copiedPet->setHp(getHp());
     copiedPet->setAttack(getAttack());
+    copiedPet->setLevel(getLevel());
     copiedPet->setExperience(getExperience());
     return copiedPet;
 }
@@ -610,6 +619,7 @@ Pet* Monkey::clone() const {
     Pet* copiedPet = new Monkey();
     copiedPet->setHp(getHp());
     copiedPet->setAttack(getAttack());
+    copiedPet->setLevel(getLevel());
     copiedPet->setExperience(getExperience());
     return copiedPet;
 }
