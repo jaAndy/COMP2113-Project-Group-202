@@ -14,6 +14,7 @@ Game::Game()
     player = new Player();
     currentTurn = 1;
     wins = 0;
+    difficultyMode = NORMAL_MODE;
 
     for (int i = 0; i < 3; i++)
     {
@@ -39,6 +40,75 @@ Game::~Game()
 
     clearShop();
     clearEnemyTeam();
+}
+
+// What it does: Shows the title screen and lets the player choose a menu option.
+// What the inputs are: None.
+// What the outputs are: Returns true to start the game, or false to exit.
+bool Game::selectDifficulty() {
+    std::string choice;
+
+    while (true) {
+        std::cout << "\033[2J\033[1;1H";
+        std::cout << R"(
+   ____ _     ___      _         _          ____      _
+  / ___| |   |_ _|    / \  _   _| |_ ___   |  _ \ ___| |_ ___
+ | |   | |    | |    / _ \| | | | __/ _ \  | |_) / _ \ __/ __|
+ | |___| |___ | |   / ___ \ |_| | || (_) | |  __/  __/ |_\__ \
+  \____|_____|___| /_/   \_\__,_|\__\___/  |_|   \___|\__|___/
+
+
+)";
+        std::cout << YELLOW << "     Please maximize your terminal window to avoid UI misalignment!" << RESET << std::endl;
+        std::cout << R"(
+                    [1] Normal Mode
+                    [2] Hard Mode
+                    [3] Exit Game
+)";
+        std::cout << std::endl;
+        std::cout << "Choice: ";
+
+        if (!std::getline(std::cin, choice)) {
+            difficultyMode = NORMAL_MODE;
+            addLog("Normal mode selected.");
+            return true;
+        }
+
+        choice = preprocessCommand(choice);
+
+        if (choice == "1" || choice == "normal" || choice == "n") {
+            difficultyMode = NORMAL_MODE;
+            std::cout << "Starting CLI Auto Pets in Normal Mode." << std::endl;
+            addLog("Normal mode selected.");
+            return true;
+        }
+
+        if (choice == "2" || choice == "hard" || choice == "h") {
+            difficultyMode = HARD_MODE;
+            std::cout << "Hard Mode enabled. Good luck." << std::endl;
+            addLog("Hard mode selected.");
+            return true;
+        }
+
+        if (choice == "3" || choice == "exit" || choice == "x") {
+            std::cout << "Goodbye!" << std::endl;
+            return false;
+        }
+
+        std::cout << "Invalid difficulty choice. Press Enter to try again.";
+        std::getline(std::cin, choice);
+    }
+}
+
+// What it does: Gets the current difficulty name.
+// What the inputs are: None.
+// What the outputs are: Returns Normal or Hard as text.
+std::string Game::getDifficultyName() const {
+    if (difficultyMode == HARD_MODE) {
+        return "Hard";
+    }
+
+    return "Normal";
 }
 
 // What it does: Adds a message to the game message log.
@@ -216,7 +286,8 @@ void Game::drawUI(Pet **activePlayerTeam, Pet **activeEnemyTeam)
     std::cout << YELLOW << "[ Gold: " << player->getGold() << " ]" << RESET << "  ";
     std::cout << RED << "[ HP: ♥x" << player->getHp() << " ]" << RESET << "  ";
     std::cout << "[ Turn: " << currentTurn << " ]  ";
-    std::cout << "[ Wins: " << wins << "/10 ]" << std::endl;
+    std::cout << "[ Wins: " << wins << "/10 ]  ";
+    std::cout << "[ Mode: " << getDifficultyName() << " ]" << std::endl;
     std::cout << CYAN << "================================================================================" << RESET << std::endl;
     std::cout << std::endl;
 
@@ -750,6 +821,20 @@ std::string Game::preprocessCommand(std::string inputLine)
 // What the outputs are: Updates the enemy pet level and stats.
 void Game::applyEnemyScaling(Pet *pet, int turn)
 {
+    applyNormalEnemyScaling(pet, turn);
+
+    if (difficultyMode == HARD_MODE)
+    {
+        applyHardEnemyScaling(pet, turn);
+        boostHardEnemyStats(pet);
+    }
+}
+
+// What it does: Applies Normal mode level and stat scaling to an enemy pet.
+// What the inputs are: The enemy pet pointer and the current turn.
+// What the outputs are: Updates the enemy pet level and stats for Normal mode.
+void Game::applyNormalEnemyScaling(Pet *pet, int turn)
+{
     int attackBonus = 0;
     int hpBonus = 0;
     int levelRoll = std::rand() % 100;
@@ -759,50 +844,246 @@ void Game::applyEnemyScaling(Pet *pet, int turn)
         return;
     }
 
-    if (turn <= 2)
+    if (turn == 1)
+    {
+        attackBonus = 0;
+        hpBonus = 0;
+    }
+    else if (turn == 2)
     {
         attackBonus = std::rand() % 2;
         hpBonus = std::rand() % 2;
     }
-    else if (turn <= 4)
+    else if (turn == 3)
     {
-        if (levelRoll < 40)
+        if (levelRoll < 10)
         {
-            pet->increaseLevel();
+            pet->setLevel(2);
         }
 
-        attackBonus = std::rand() % 3;
-        hpBonus = std::rand() % 3;
+        attackBonus = std::rand() % 2;
+        hpBonus = std::rand() % 2;
     }
-    else if (turn <= 7)
+    else if (turn == 4)
     {
-        if (levelRoll < 25)
+        if (levelRoll < 30)
         {
-            pet->increaseLevel();
-            pet->increaseLevel();
-        }
-        else if (levelRoll < 75)
-        {
-            pet->increaseLevel();
+            pet->setLevel(2);
         }
 
-        attackBonus = 2 + (std::rand() % 4);
-        hpBonus = 2 + (std::rand() % 4);
+        attackBonus = 1 + (std::rand() % 2);
+        hpBonus = 1 + (std::rand() % 2);
+    }
+    else if (turn == 5)
+    {
+        if (levelRoll < 50)
+        {
+            pet->setLevel(2);
+        }
+
+        attackBonus = 1 + (std::rand() % 3);
+        hpBonus = 1 + (std::rand() % 3);
+    }
+    else if (turn == 6)
+    {
+        if (levelRoll < 75)
+        {
+            pet->setLevel(2);
+        }
+
+        attackBonus = 2 + (std::rand() % 3);
+        hpBonus = 2 + (std::rand() % 3);
+    }
+    else if (turn == 7)
+    {
+        if (levelRoll < 10)
+        {
+            pet->setLevel(3);
+        }
+        else
+        {
+            pet->setLevel(2);
+        }
+
+        attackBonus = 3 + (std::rand() % 3);
+        hpBonus = 3 + (std::rand() % 3);
+    }
+    else if (turn == 8)
+    {
+        if (levelRoll < 30)
+        {
+            pet->setLevel(3);
+        }
+        else
+        {
+            pet->setLevel(2);
+        }
+
+        attackBonus = 4 + (std::rand() % 3);
+        hpBonus = 4 + (std::rand() % 3);
+    }
+    else if (turn == 9)
+    {
+        if (levelRoll < 50)
+        {
+            pet->setLevel(3);
+        }
+        else
+        {
+            pet->setLevel(2);
+        }
+
+        attackBonus = 5 + (std::rand() % 3);
+        hpBonus = 5 + (std::rand() % 3);
     }
     else
     {
-        pet->increaseLevel();
-
-        if (levelRoll < 50)
+        if (levelRoll < 80)
         {
-            pet->increaseLevel();
+            pet->setLevel(3);
+        }
+        else
+        {
+            pet->setLevel(2);
         }
 
-        attackBonus = 4 + (std::rand() % 5);
-        hpBonus = 4 + (std::rand() % 5);
+        attackBonus = 6 + (std::rand() % 4);
+        hpBonus = 6 + (std::rand() % 4);
     }
 
     pet->buffStats(attackBonus, hpBonus);
+}
+
+// What it does: Applies Hard mode level scaling to an enemy pet.
+// What the inputs are: The enemy pet pointer and the current turn.
+// What the outputs are: Updates the enemy pet level for Hard mode.
+void Game::applyHardEnemyScaling(Pet *pet, int turn)
+{
+    int levelRoll = std::rand() % 100;
+
+    if (pet == nullptr)
+    {
+        return;
+    }
+
+    if (turn == 1)
+    {
+        pet->setLevel(1);
+    }
+    else if (turn == 2)
+    {
+        if (levelRoll < 10)
+        {
+            pet->setLevel(2);
+        }
+        else
+        {
+            pet->setLevel(1);
+        }
+    }
+    else if (turn == 3)
+    {
+        if (levelRoll < 20)
+        {
+            pet->setLevel(2);
+        }
+        else
+        {
+            pet->setLevel(1);
+        }
+    }
+    else if (turn == 4)
+    {
+        if (levelRoll < 40)
+        {
+            pet->setLevel(2);
+        }
+        else
+        {
+            pet->setLevel(1);
+        }
+    }
+    else if (turn == 5)
+    {
+        if (levelRoll < 60)
+        {
+            pet->setLevel(2);
+        }
+    }
+    else if (turn == 6)
+    {
+        if (levelRoll < 10)
+        {
+            pet->setLevel(3);
+        }
+        else
+        {
+            pet->setLevel(2);
+        }
+    }
+    else if (turn == 7)
+    {
+        if (levelRoll < 20)
+        {
+            pet->setLevel(3);
+        }
+        else
+        {
+            pet->setLevel(2);
+        }
+    }
+    else if (turn == 8)
+    {
+        if (levelRoll < 40)
+        {
+            pet->setLevel(3);
+        }
+        else
+        {
+            pet->setLevel(2);
+        }
+    }
+    else if (turn == 9)
+    {
+        if (levelRoll < 60)
+        {
+            pet->setLevel(3);
+        }
+        else
+        {
+            pet->setLevel(2);
+        }
+    }
+    else
+    {
+        if (levelRoll < 90)
+        {
+            pet->setLevel(3);
+        }
+        else
+        {
+            pet->setLevel(2);
+        }
+    }
+}
+
+// What it does: Raises Hard mode enemy stats using integer scaling.
+// What the inputs are: The enemy pet pointer.
+// What the outputs are: Updates attack and health with a stronger Hard mode value.
+void Game::boostHardEnemyStats(Pet *pet)
+{
+    int boostedAttack = 0;
+    int boostedHp = 0;
+
+    if (pet == nullptr)
+    {
+        return;
+    }
+
+    boostedAttack = pet->getAttack() + (pet->getAttack() / 5) + 1;
+    boostedHp = pet->getHp() + (pet->getHp() / 5) + 1;
+    pet->setAttack(boostedAttack);
+    pet->setHp(boostedHp);
 }
 
 // What it does: Creates a scaled enemy team for the current turn.
@@ -1577,6 +1858,11 @@ void Game::shopPhase()
 // What the outputs are: Runs shop, enemy generation, battle result, and final game over output.
 void Game::start()
 {
+    if (!selectDifficulty())
+    {
+        return;
+    }
+
     while (player->getHp() > 0 && wins < 10)
     {
         shopPhase();

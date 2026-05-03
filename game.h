@@ -17,17 +17,29 @@
 class Game
 {
 private:
+    enum DifficultyMode
+    {
+        NORMAL_MODE,
+        HARD_MODE
+    };
+
     Player *player;
     Pet *shopPets[3];
     Pet *enemyTeam[5];
     int currentTurn;
     int wins;
+    DifficultyMode difficultyMode;
     std::vector<std::string> messageLog;
 
+    bool selectDifficulty();
+    std::string getDifficultyName() const;
     void rollShop();
     Pet *createRandomPetByTier(int maxTier);
     void generateEnemyTeam(int turn);
     void applyEnemyScaling(Pet *pet, int turn);
+    void applyNormalEnemyScaling(Pet *pet, int turn);
+    void applyHardEnemyScaling(Pet *pet, int turn);
+    void boostHardEnemyStats(Pet *pet);
     void clearShop();
     void clearEnemyTeam();
     void clonePlayerTeam(Pet *targetTeam[5]);
